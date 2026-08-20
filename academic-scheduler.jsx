@@ -923,7 +923,7 @@ function parseCourseWorkbook(wb) {
 // ============================================================================
 //  UI atoms
 // ============================================================================
-const INK="#1a2438", PAPER="#f7f6f2", LINE="#e3e0d6";
+const INK="#1a2438", PAPER="#f7f6f2", LINE="#e3e0d6", THICK="#b0a99c";
 
 function LockBtn({ locked, lang, onClick }) {
   return (
@@ -1692,7 +1692,7 @@ export default function App() {
                       {view==="master" ? (<>
                         <th className="sticky left-0 z-10 px-2 py-2 text-[11px] font-semibold" style={{ background:"#fbfaf6", borderBottom:`1px solid ${LINE}`, borderRight:`1px solid ${LINE}`, width:60 }}>{t("day")}</th>
                         <th className="px-2 py-2 text-[11px] font-semibold" style={{ background:"#fbfaf6", borderBottom:`1px solid ${LINE}`, borderRight:`1px solid ${LINE}`, width:96 }}>{t("period")}</th>
-                        {COHORTS.map((c)=>(<th key={c.id} className="px-2 py-2 text-[12px]" style={{ borderBottom:`1px solid ${LINE}` }}><div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background:COHORT_COLORS[c.id] }}/><span className="font-bold">{c.id}</span><span className="opacity-50 text-[10px] whitespace-nowrap">{t("year")} {c.year} · {c.students}</span></div></th>))}
+                        {COHORTS.map((c, idx)=>(<th key={c.id} className="px-2 py-2 text-[12px]" style={{ borderBottom:`2px solid ${THICK}`, borderLeft: (idx>0 && COHORTS[idx].year!==COHORTS[idx-1].year) ? `3px solid ${THICK}` : `1px solid ${LINE}` }}><div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background:COHORT_COLORS[c.id] }}/><span className="font-bold">{c.id}</span><span className="opacity-50 text-[10px] whitespace-nowrap">{t("year")} {c.year} · {c.students}</span></div></th>))}
                       </>) : (<>
                         <th className="sticky left-0 z-10 px-2 py-2 text-[11px] font-semibold" style={{ background:"#fbfaf6", borderBottom:`1px solid ${LINE}`, borderRight:`1px solid ${LINE}`, width:74 }}>{t("period")}</th>
                         {DAYS.map((d)=>(<th key={d.id} className="px-2 py-2 text-[12px] font-bold" style={{ borderBottom:`1px solid ${LINE}` }}>{dayLabel(lang,d)}</th>))}
@@ -1703,19 +1703,21 @@ export default function App() {
                     {view==="master"
                       ? DAYS.map((d)=>PERIODS.map((p, pi)=>(
                           <tr key={d.id+p.id}>
-                            {pi===0 && (<td rowSpan={PERIODS.length} className="sticky left-0 z-10 align-top px-2 py-2" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom:`2px solid ${LINE}`, width:60 }}><div className="text-[12px] font-bold leading-tight">{dayLabel(lang,d)}</div></td>)}
-                            <td className="px-2 py-1.5 align-top" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom:`1px solid ${LINE}`, width:96 }}><div className="text-[11px] font-semibold">P{p.id}</div><div className="text-[10px] opacity-50 whitespace-nowrap">{p.label}</div></td>
+                            {pi===0 && (<td rowSpan={PERIODS.length} className="sticky left-0 z-10 align-top px-2 py-2" style={{ background:"#fff", borderRight:`2px solid ${THICK}`, borderBottom:`3px solid ${THICK}`, width:60 }}><div className="text-[12px] font-bold leading-tight">{dayLabel(lang,d)}</div></td>)}
+                            <td className="px-2 py-1.5 align-top" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom: pi===PERIODS.length-1 ? `3px solid ${THICK}` : `1px solid ${LINE}`, width:96 }}><div className="text-[11px] font-semibold">P{p.id}</div><div className="text-[10px] opacity-50 whitespace-nowrap">{p.label}</div></td>
                             {(()=>{ const out=[]; let i=0;
                               const rowEmpty = COHORTS.every((c)=>cellSessions(d.id, p.id, c.id).length===0);
+                              const lastRow = pi===PERIODS.length-1;
                               while (i < COHORTS.length) {
                                 const ci = COHORTS[i].id; const ss = cellSessions(d.id, p.id, ci);
+                                const yearStart = i>0 && COHORTS[i].year!==COHORTS[i-1].year;
                                 let span = 1;
                                 if (ss.length) { const idset = ss.map((x)=>x.id).sort().join(",");
                                   while (i+span < COHORTS.length) { const nid = COHORTS[i+span].id; const ns = cellSessions(d.id, p.id, nid);
                                     if (ns.map((x)=>x.id).sort().join(",")===idset && ss.every((x)=>x.cohorts.includes(nid))) span++; else break; } }
                                 const blocked = d.id==="tue" && p.id>=TUE_CUTOFF_PERIOD;
                                 const hatched = blocked || rowEmpty; // gray out blocked slots AND fully-empty period rows
-                                out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5" style={{ borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
+                                out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5" style={{ borderBottom: lastRow ? `3px solid ${THICK}` : `1px solid ${LINE}`, borderLeft: yearStart ? `3px solid ${THICK}` : `1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
                                 i += span;
                               }
                               return out;
