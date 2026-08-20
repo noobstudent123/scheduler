@@ -321,87 +321,87 @@ const SEED_COURSES = [
   cc(25, ["4A"], "t8", "h1", { name:"НББ-ийн мэргэжлийн судалгаа", sem:0.25 }),
 ];
 const SEED_PLACED = [
-  {id:"P0",courseIdx:22,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:1,room:"307",parity:"weekly",locked:false},
-  {id:"P1",courseIdx:22,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:1,room:"307",parity:"weekly",locked:false},
+  {id:"P0",courseIdx:22,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:1,room:"307",parity:"weekly",locked:false},
+  {id:"P1",courseIdx:22,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:1,room:"307",parity:"weekly",locked:false},
   {id:"P2",courseIdx:22,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:1,room:"307",parity:"weekly",locked:false},
-  {id:"P3",courseIdx:22,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:2,room:"307",parity:"weekly",locked:false},
-  {id:"P4",courseIdx:22,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:3,room:"307",parity:"weekly",locked:false},
-  {id:"P5",courseIdx:22,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:4,room:"307",parity:"weekly",locked:false},
+  {id:"P3",courseIdx:22,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:2,room:"307",parity:"weekly",locked:false},
+  {id:"P4",courseIdx:22,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:2,room:"307",parity:"weekly",locked:false},
+  {id:"P5",courseIdx:22,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:3,room:"307",parity:"weekly",locked:false},
   {id:"P6",courseIdx:8,ins:"t8",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"tue",period:1,room:"104",parity:"weekly",locked:false},
-  {id:"P7",courseIdx:8,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"thu",period:1,room:"304",parity:"weekly",locked:false},
-  {id:"P8",courseIdx:8,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"fri",period:1,room:"309",parity:"weekly",locked:false},
-  {id:"P9",courseIdx:8,ins:"t8",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:1,room:"304",parity:"weekly",locked:false},
+  {id:"P7",courseIdx:8,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"wed",period:1,room:"304",parity:"weekly",locked:false},
+  {id:"P8",courseIdx:8,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:1,room:"309",parity:"weekly",locked:false},
+  {id:"P9",courseIdx:8,ins:"t8",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:3,room:"304",parity:"weekly",locked:false},
   {id:"P10",courseIdx:8,ins:"t8",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:2,room:"309",parity:"weekly",locked:false},
   {id:"P11",courseIdx:13,ins:"t11",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["2A","2B"],students:40,day:"tue",period:1,room:"306",parity:"weekly",locked:false},
-  {id:"P12",courseIdx:13,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2A"],students:20,day:"thu",period:1,room:"308",parity:"weekly",locked:false},
+  {id:"P12",courseIdx:13,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2A"],students:20,day:"wed",period:1,room:"308",parity:"weekly",locked:false},
   {id:"P13",courseIdx:13,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2B"],students:20,day:"mon",period:1,room:"305",parity:"weekly",locked:false},
   {id:"P14",courseIdx:13,ins:"t11",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2A"],students:20,day:"mon",period:3,room:"308",parity:"weekly",locked:false},
   {id:"P15",courseIdx:13,ins:"t11",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2B"],students:20,day:"mon",period:2,room:"305",parity:"weekly",locked:false},
   {id:"P16",courseIdx:14,ins:"t13",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["2A","2B"],students:40,day:"fri",period:1,room:"104",parity:"weekly",locked:false},
-  {id:"P17",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2A"],students:20,day:"mon",period:1,room:"201",parity:"weekly",locked:false},
+  {id:"P17",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2A"],students:20,day:"mon",period:2,room:"201",parity:"weekly",locked:false},
   {id:"P18",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2B"],students:20,day:"fri",period:2,room:"201",parity:"weekly",locked:false},
-  {id:"P19",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2A"],students:20,day:"mon",period:2,room:"201",parity:"weekly",locked:false},
+  {id:"P19",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2A"],students:20,day:"mon",period:1,room:"201",parity:"weekly",locked:false},
   {id:"P20",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2B"],students:20,day:"fri",period:3,room:"201",parity:"weekly",locked:false},
-  {id:"P21",courseIdx:21,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"thu",period:1,room:"303",parity:"weekly",locked:false},
-  {id:"P22",courseIdx:21,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"wed",period:1,room:"303",parity:"weekly",locked:false},
-  {id:"P23",courseIdx:21,ins:"t14",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"fri",period:1,room:"201",parity:"weekly",locked:false},
-  {id:"P24",courseIdx:21,ins:"t14",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"thu",period:2,room:"201",parity:"weekly",locked:false},
-  {id:"P25",courseIdx:23,ins:"t15",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:1,room:"307",parity:"weekly",locked:false},
+  {id:"P21",courseIdx:21,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"wed",period:1,room:"303",parity:"weekly",locked:false},
+  {id:"P22",courseIdx:21,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"tue",period:1,room:"303",parity:"weekly",locked:false},
+  {id:"P23",courseIdx:21,ins:"t14",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"thu",period:1,room:"201",parity:"weekly",locked:false},
+  {id:"P24",courseIdx:21,ins:"t14",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"fri",period:1,room:"201",parity:"weekly",locked:false},
+  {id:"P25",courseIdx:23,ins:"t15",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:1,room:"307",parity:"weekly",locked:false},
   {id:"P26",courseIdx:23,ins:"t15",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:1,room:"307",parity:"weekly",locked:false},
-  {id:"P27",courseIdx:23,ins:"t15",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:2,room:"307",parity:"weekly",locked:false},
-  {id:"P28",courseIdx:23,ins:"t15",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:2,room:"307",parity:"weekly",locked:false},
-  {id:"P29",courseIdx:24,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:2,room:"307",parity:"weekly",locked:false},
-  {id:"P30",courseIdx:24,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:2,room:"307",parity:"weekly",locked:false},
+  {id:"P27",courseIdx:23,ins:"t15",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:2,room:"307",parity:"weekly",locked:false},
+  {id:"P28",courseIdx:23,ins:"t15",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:3,room:"307",parity:"weekly",locked:false},
+  {id:"P29",courseIdx:24,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:2,room:"307",parity:"weekly",locked:false},
+  {id:"P30",courseIdx:24,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:2,room:"307",parity:"weekly",locked:false},
   {id:"P31",courseIdx:24,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:3,room:"307",parity:"weekly",locked:false},
-  {id:"P32",courseIdx:24,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:3,room:"307",parity:"weekly",locked:false},
-  {id:"P33",courseIdx:1,ins:"t1",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["1A","1B"],students:48,day:"wed",period:1,room:"104",parity:"weekly",locked:false},
-  {id:"P34",courseIdx:1,ins:"t1",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["1A"],students:24,day:"fri",period:1,room:"304",parity:"weekly",locked:false},
-  {id:"P35",courseIdx:1,ins:"t1",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["1B"],students:24,day:"thu",period:1,room:"309",parity:"weekly",locked:false},
-  {id:"P36",courseIdx:2,ins:"t2",type:"L",roomType:"lecture",freq:"biweekly",phase:"full",cohorts:["1A","1B"],students:48,day:"thu",period:2,room:"104",parity:"odd",locked:false},
-  {id:"P37",courseIdx:2,ins:"t2",type:"Lab",roomType:"lab",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"thu",period:3,room:"201",parity:"weekly",locked:false},
-  {id:"P38",courseIdx:2,ins:"t2",type:"Lab",roomType:"lab",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:3,room:"201",parity:"weekly",locked:false},
+  {id:"P32",courseIdx:24,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:3,room:"307",parity:"weekly",locked:false},
+  {id:"P33",courseIdx:1,ins:"t1",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["1A","1B"],students:48,day:"fri",period:1,room:"104",parity:"weekly",locked:false},
+  {id:"P34",courseIdx:1,ins:"t1",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["1A"],students:24,day:"fri",period:2,room:"304",parity:"weekly",locked:false},
+  {id:"P35",courseIdx:1,ins:"t1",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["1B"],students:24,day:"mon",period:3,room:"309",parity:"weekly",locked:false},
+  {id:"P36",courseIdx:2,ins:"t2",type:"L",roomType:"lecture",freq:"biweekly",phase:"full",cohorts:["1A","1B"],students:48,day:"thu",period:1,room:"104",parity:"even",locked:false},
+  {id:"P37",courseIdx:2,ins:"t2",type:"Lab",roomType:"lab",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:4,room:"201",parity:"weekly",locked:false},
+  {id:"P38",courseIdx:2,ins:"t2",type:"Lab",roomType:"lab",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"thu",period:2,room:"201",parity:"weekly",locked:false},
   {id:"P39",courseIdx:3,ins:"t3",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"tue",period:2,room:"104",parity:"weekly",locked:false},
-  {id:"P40",courseIdx:3,ins:"t3",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"fri",period:2,room:"304",parity:"weekly",locked:false},
-  {id:"P41",courseIdx:3,ins:"t3",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"wed",period:2,room:"309",parity:"weekly",locked:false},
+  {id:"P40",courseIdx:3,ins:"t3",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"wed",period:2,room:"304",parity:"weekly",locked:false},
+  {id:"P41",courseIdx:3,ins:"t3",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"wed",period:1,room:"309",parity:"weekly",locked:false},
   {id:"P42",courseIdx:6,ins:"t6",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"tue",period:3,room:"104",parity:"weekly",locked:false},
-  {id:"P43",courseIdx:6,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"wed",period:2,room:"304",parity:"weekly",locked:false},
-  {id:"P44",courseIdx:6,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"fri",period:2,room:"309",parity:"weekly",locked:false},
+  {id:"P43",courseIdx:6,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"thu",period:2,room:"304",parity:"weekly",locked:false},
+  {id:"P44",courseIdx:6,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"wed",period:2,room:"309",parity:"weekly",locked:false},
   {id:"P45",courseIdx:7,ins:"t7",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"wed",period:3,room:"104",parity:"weekly",locked:false},
-  {id:"P46",courseIdx:7,ins:"t7",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:2,room:"304",parity:"weekly",locked:false},
-  {id:"P47",courseIdx:7,ins:"t7",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:1,room:"309",parity:"weekly",locked:false},
-  {id:"P48",courseIdx:9,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:1,room:"306",parity:"weekly",locked:false},
+  {id:"P46",courseIdx:7,ins:"t7",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"fri",period:3,room:"304",parity:"weekly",locked:false},
+  {id:"P47",courseIdx:7,ins:"t7",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"fri",period:2,room:"309",parity:"weekly",locked:false},
+  {id:"P48",courseIdx:9,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"thu",period:1,room:"306",parity:"weekly",locked:false},
   {id:"P49",courseIdx:9,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"fri",period:2,room:"308",parity:"weekly",locked:false},
-  {id:"P50",courseIdx:9,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"thu",period:1,room:"305",parity:"weekly",locked:false},
+  {id:"P50",courseIdx:9,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"thu",period:2,room:"305",parity:"weekly",locked:false},
   {id:"P51",courseIdx:10,ins:"t10",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"tue",period:2,room:"306",parity:"weekly",locked:false},
   {id:"P52",courseIdx:10,ins:"t10",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"thu",period:2,room:"308",parity:"weekly",locked:false},
   {id:"P53",courseIdx:10,ins:"t10",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"mon",period:3,room:"305",parity:"weekly",locked:false},
   {id:"P54",courseIdx:11,ins:"t11",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:2,room:"104",parity:"weekly",locked:false},
   {id:"P55",courseIdx:11,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"fri",period:3,room:"308",parity:"weekly",locked:false},
-  {id:"P56",courseIdx:11,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"thu",period:2,room:"305",parity:"weekly",locked:false},
+  {id:"P56",courseIdx:11,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"mon",period:4,room:"305",parity:"weekly",locked:false},
   {id:"P57",courseIdx:12,ins:"t12",type:"L",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"tue",period:3,room:"ONLINE",parity:"weekly",locked:false},
   {id:"P58",courseIdx:12,ins:"t12",type:"S",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:3,room:"ONLINE",parity:"weekly",locked:false},
   {id:"P59",courseIdx:12,ins:"t12",type:"B",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"thu",period:3,room:"ONLINE",parity:"weekly",locked:false},
-  {id:"P60",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"thu",period:4,room:"308",parity:"weekly",locked:false},
-  {id:"P61",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:4,room:"308",parity:"weekly",locked:false},
+  {id:"P60",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:4,room:"308",parity:"weekly",locked:false},
+  {id:"P61",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"thu",period:4,room:"308",parity:"weekly",locked:false},
   {id:"P62",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"fri",period:4,room:"308",parity:"weekly",locked:false},
-  {id:"P63",courseIdx:16,ins:"t5",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:1,room:"303",parity:"weekly",locked:false},
-  {id:"P64",courseIdx:16,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:1,room:"303",parity:"weekly",locked:false},
-  {id:"P65",courseIdx:16,ins:"t5",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:2,room:"303",parity:"weekly",locked:false},
-  {id:"P66",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:2,room:"303",parity:"weekly",locked:false},
-  {id:"P67",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:3,room:"303",parity:"weekly",locked:false},
-  {id:"P68",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:3,room:"303",parity:"weekly",locked:false},
-  {id:"P69",courseIdx:20,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"wed",period:2,room:"303",parity:"weekly",locked:false},
-  {id:"P70",courseIdx:20,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:2,room:"303",parity:"weekly",locked:false},
-  {id:"P71",courseIdx:20,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:3,room:"303",parity:"weekly",locked:false},
-  {id:"P72",courseIdx:4,ins:"t4",type:"L",roomType:"online",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"fri",period:3,room:"ONLINE",parity:"weekly",locked:false},
-  {id:"P73",courseIdx:4,ins:"t4",type:"S",roomType:"online",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"fri",period:4,room:"ONLINE",parity:"weekly",locked:false},
-  {id:"P74",courseIdx:5,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:3,room:"304",parity:"weekly",locked:false},
-  {id:"P75",courseIdx:5,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"thu",period:3,room:"309",parity:"weekly",locked:false},
-  {id:"P76",courseIdx:17,ins:"t8",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"wed",period:3,room:"303",parity:"weekly",locked:false},
-  {id:"P77",courseIdx:17,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:4,room:"303",parity:"weekly",locked:false},
+  {id:"P63",courseIdx:16,ins:"t5",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:1,room:"303",parity:"weekly",locked:false},
+  {id:"P64",courseIdx:16,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P65",courseIdx:16,ins:"t5",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:3,room:"303",parity:"weekly",locked:false},
+  {id:"P66",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P67",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P68",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:3,room:"303",parity:"weekly",locked:false},
+  {id:"P69",courseIdx:20,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P70",courseIdx:20,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:3,room:"303",parity:"weekly",locked:false},
+  {id:"P71",courseIdx:20,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:4,room:"303",parity:"weekly",locked:false},
+  {id:"P72",courseIdx:4,ins:"t4",type:"L",roomType:"online",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"thu",period:3,room:"ONLINE",parity:"weekly",locked:false},
+  {id:"P73",courseIdx:4,ins:"t4",type:"S",roomType:"online",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"thu",period:4,room:"ONLINE",parity:"weekly",locked:false},
+  {id:"P74",courseIdx:5,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"wed",period:4,room:"304",parity:"weekly",locked:false},
+  {id:"P75",courseIdx:5,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"fri",period:3,room:"309",parity:"weekly",locked:false},
+  {id:"P76",courseIdx:17,ins:"t8",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"wed",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P77",courseIdx:17,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"wed",period:3,room:"303",parity:"weekly",locked:false},
   {id:"P78",courseIdx:18,ins:"t5",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:3,room:"303",parity:"weekly",locked:false},
   {id:"P79",courseIdx:18,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:4,room:"303",parity:"weekly",locked:false},
-  {id:"P80",courseIdx:25,ins:"t8",type:"S",roomType:"seminar",freq:"biweekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:3,room:"307",parity:"even",locked:false},
+  {id:"P80",courseIdx:25,ins:"t8",type:"S",roomType:"seminar",freq:"biweekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:4,room:"307",parity:"even",locked:false},
 ];
 
 // ---------- Derivation ----------
@@ -617,8 +617,11 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     if (rules.balanceStudent) for (const co of s.cohorts) { let n=0; for (const x of placed) if (x.day===d && x.cohorts.includes(co)) n++; c += n*n*3; }
     if (pa !== "weekly") {
       if (rules.pairBiweekly) { const opp = pa==="odd"?"even":"odd"; for (const x of placed) if (x.day===d && x.period===p && x.parity===opp && x.cohorts.some((co)=>s.cohorts.includes(co))) { c -= 6; break; } }
-      if (rules.biweeklyEdge) { let mn=99,mx=0; for (const x of placed) if (x.day===d && x.cohorts.some((co)=>s.cohorts.includes(co))) { if (x.period<mn) mn=x.period; if (x.period>mx) mx=x.period; }
-        const edge = (p===1) || (mx===0) || (p>=mx) || (p<=mn); if (!edge) c += 8; }
+      if (rules.biweeklyEdge) { // biweekly must be first/last of the day, else the off-week has a mid-day gap
+        let mn=99,mx=0,any=false; for (const x of placed) if (x.day===d && x.cohorts.some((co)=>s.cohorts.includes(co))) { any=true; if (x.period<mn) mn=x.period; if (x.period>mx) mx=x.period; }
+        c += (p-1)*22;                             // pull toward P1 (an edge, and lecture-before-seminar friendly)
+        if (any && p>mn && p<mx) c += 45;          // heavy penalty for landing in the interior of the block
+      }
     }
     if (rules.balanceTeacher) { let n=0; for (const x of placed) if (x.day===d && x.ins===s.ins) n++; if (n>=3) c += 6; }
     c += rand() * 3;
@@ -644,6 +647,7 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
       if (offMap[s.ins] === day.id) continue;
       if (!seqOK(s, day.id, per.id)) continue;
       if (rules.minGaps && !contiguousOK(s, day.id, per.id)) continue;
+      if (rules.biweeklyEdge && s.freq !== "weekly" && per.id !== 1 && per.id !== (ALLOWP4 ? 4 : 3)) continue; // biweekly only at day edge
       if (!occ.canPlace(s, day.id, per.id, pa)) continue;
       let room, room2=null;
       if (s.parallel) { const rr = pickParallelRooms(s, day.id, per.id, pa, occ); if (!rr) continue; [room, room2] = rr; }
@@ -941,6 +945,7 @@ function ScheduleCard({ s, view, colorBy, lang, courses, teachers, onClick, onTo
       ) : (
       <div className="mt-0.5 flex items-center gap-1 flex-wrap text-[10px] opacity-80">
         <span className="rounded px-1 font-semibold" style={{ background:`${color}22`, color }}>{compTag(lang,s.type)}</span>
+        {s.parity!=="weekly" && <span className="rounded px-1 font-semibold" style={{ background:"#0000000d" }}>{s.parity==="odd"?tr(lang,"oddWk"):tr(lang,"evenWk")}</span>}
         {view!=="cohort" && <span>{s.cohorts.join("+")}</span>}
         {view!=="instructor" && <span>{teacherName(teachers,s.ins)}</span>}
         {view!=="room" && <span>{online ? tr(lang,"online") : s.room}</span>}
@@ -987,6 +992,8 @@ function CellContent({ list, view, colorBy, lang, courses, teachers, onCard, onL
       onDragStart={()=>setDragId(s.id)} onClick={()=>onCard(s)} onToggleLock={()=>onLock(s.id)} />
   );
   if (!odd.length && !even.length) return <div className="flex flex-col gap-1">{weekly.map(full)}</div>;
+  // Only split the cell diagonally when BOTH weeks carry a (different) class. A lone biweekly fills the cell.
+  if (!odd.length || !even.length) return <div className="flex flex-col gap-1">{weekly.map(full)}{[...odd, ...even].map(full)}</div>;
   const oddColor = odd[0] ? cardColor(odd[0], colorBy) : LINE;
   const evenColor = even[0] ? cardColor(even[0], colorBy) : LINE;
   return (
@@ -1685,6 +1692,7 @@ export default function App() {
                             {pi===0 && (<td rowSpan={PERIODS.length} className="sticky left-0 z-10 align-top px-2 py-2" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom:`2px solid ${LINE}`, width:60 }}><div className="text-[12px] font-bold leading-tight">{dayLabel(lang,d)}</div></td>)}
                             <td className="px-2 py-1.5 align-top" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom:`1px solid ${LINE}`, width:96 }}><div className="text-[11px] font-semibold">P{p.id}</div><div className="text-[10px] opacity-50 whitespace-nowrap">{p.label}</div></td>
                             {(()=>{ const out=[]; let i=0;
+                              const rowEmpty = COHORTS.every((c)=>cellSessions(d.id, p.id, c.id).length===0);
                               while (i < COHORTS.length) {
                                 const ci = COHORTS[i].id; const ss = cellSessions(d.id, p.id, ci);
                                 let span = 1;
@@ -1692,7 +1700,8 @@ export default function App() {
                                   while (i+span < COHORTS.length) { const nid = COHORTS[i+span].id; const ns = cellSessions(d.id, p.id, nid);
                                     if (ns.map((x)=>x.id).sort().join(",")===idset && ss.every((x)=>x.cohorts.includes(nid))) span++; else break; } }
                                 const blocked = d.id==="tue" && p.id>=TUE_CUTOFF_PERIOD;
-                                out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5" style={{ borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: blocked ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
+                                const hatched = blocked || rowEmpty; // gray out blocked slots AND fully-empty period rows
+                                out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5" style={{ borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
                                 i += span;
                               }
                               return out;
