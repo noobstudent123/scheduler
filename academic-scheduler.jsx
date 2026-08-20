@@ -938,11 +938,12 @@ function LockBtn({ locked, lang, onClick }) {
 function ScheduleCard({ s, view, colorBy, lang, courses, teachers, onClick, onToggleLock, onDragStart }) {
   const color = cardColor(s, colorBy);
   const online = s.room === "ONLINE";
+  const biweekly = s.parity !== "weekly";
   return (
     <div draggable onDragStart={onDragStart} onClick={onClick}
       className="group relative rounded-md px-2 py-1.5 text-[11px] leading-tight cursor-pointer transition-shadow hover:shadow-md flex-1"
-      style={{ background:`${color}12`, borderLeft:`3px solid ${color}`, color:INK }}
-      title={`${courseName(courses,s.courseIdx)} · ${compLabel(lang,s.type)}`}>
+      style={{ background: biweekly ? `repeating-linear-gradient(45deg, ${color}0a, ${color}0a 5px, ${color}24 5px, ${color}24 10px)` : `${color}12`, borderLeft:`3px ${biweekly?"dashed":"solid"} ${color}`, color:INK }}
+      title={`${courseName(courses,s.courseIdx)} · ${compLabel(lang,s.type)}${biweekly?` · ${s.parity==="odd"?tr(lang,"oddWk"):tr(lang,"evenWk")}`:""}`}>
       <div className="flex items-start justify-between gap-1">
         <span className="font-semibold truncate">{courseName(courses, s.courseIdx)}{s.parallel && <span className="ml-1 text-[9px] font-bold" style={{ color }} title={tr(lang,"parallelNote")}>∥</span>}</span>
         <LockBtn locked={s.locked} lang={lang} onClick={onToggleLock}/>
@@ -959,7 +960,7 @@ function ScheduleCard({ s, view, colorBy, lang, courses, teachers, onClick, onTo
       ) : (
       <div className="mt-0.5 flex items-center gap-1 flex-wrap text-[10px] opacity-80">
         <span className="rounded px-1 font-semibold" style={{ background:`${color}22`, color }}>{compTag(lang,s.type)}</span>
-        {s.parity!=="weekly" && <span className="rounded px-1 font-semibold" style={{ background:"#0000000d" }}>{s.parity==="odd"?tr(lang,"oddWk"):tr(lang,"evenWk")}</span>}
+        {s.parity!=="weekly" && <span className="rounded px-1 font-bold uppercase tracking-wide" style={{ background:`${color}2e`, color, fontSize:"8px" }}>⟳ {s.parity==="odd"?tr(lang,"oddWk"):tr(lang,"evenWk")}</span>}
         {view!=="cohort" && <span>{s.cohorts.join("+")}</span>}
         {view!=="instructor" && <span>{teacherName(teachers,s.ins)}</span>}
         {view!=="room" && <span>{online ? tr(lang,"online") : s.room}</span>}
