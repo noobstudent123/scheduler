@@ -1,5 +1,12 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
+import { createClient } from "@supabase/supabase-js";
+
+// ---- Supabase (cloud login + saved schedules) ----
+const SUPABASE_URL = "https://afnnrpavqsdamzzkxxcn.supabase.co";
+const SUPABASE_KEY = "sb_publishable_aWXZo9kOzMRA5P4J85prBQ_da0jNcVX";
+const supabase = (SUPABASE_URL.startsWith("https://") && (SUPABASE_KEY.startsWith("sb_") || SUPABASE_KEY.length > 30))
+  ? createClient(SUPABASE_URL, SUPABASE_KEY) : null; // null → app runs fully local, cloud UI hidden
 import {
   Calendar, Lock, Unlock, Play, RotateCw, Download, Printer, AlertTriangle,
   CheckCircle2, X, Users, User, DoorOpen, LayoutGrid, Save, Info, ChevronRight,
@@ -103,6 +110,25 @@ const STR = {
   moved:{en:"Moved — schedule still valid",mn:"Зөөгдлөө — хуваарь хүчинтэй"},
   lockedMove:{en:"Locked class — unlock to move it",mn:"Түгжээтэй хичээл — эхлээд тайлна уу"},
   wrongColumn:{en:"Can't move a class into another group's column — drop it in its own column (a different period or day)",mn:"Хичээлийг өөр бүлгийн баганад зөөх боломжгүй — өөрийнх нь баганад (өөр цаг эсвэл өдөр) буулгана уу"},
+  signIn:{en:"Sign in",mn:"Нэвтрэх"},
+  signUp:{en:"Sign up",mn:"Бүртгүүлэх"},
+  signOut:{en:"Sign out",mn:"Гарах"},
+  mySchedules:{en:"My schedules",mn:"Миний хуваарь"},
+  cloudTitle:{en:"Cloud schedules",mn:"Үүлэн хуваарь"},
+  emailLbl:{en:"Email",mn:"Имэйл"},
+  passwordLbl:{en:"Password",mn:"Нууц үг"},
+  saveToCloud:{en:"Save to cloud",mn:"Үүлэнд хадгалах"},
+  scheduleName:{en:"Schedule name",mn:"Хуваарийн нэр"},
+  statusDraft:{en:"Draft",mn:"Ноорог"},
+  statusCheckpoint:{en:"Checkpoint",mn:"Хадгалалт"},
+  statusFinal:{en:"Final",mn:"Эцсийн"},
+  loadBtn:{en:"Load",mn:"Ачаалах"},
+  noSaved:{en:"No saved schedules yet.",mn:"Хадгалсан хуваарь алга."},
+  cloudSaved:{en:"Saved to cloud",mn:"Үүлэнд хадгалагдлаа"},
+  cloudLoaded:{en:"Loaded from cloud",mn:"Үүлнээс ачааллаа"},
+  cloudErr:{en:"Cloud error",mn:"Үүлэн алдаа"},
+  signInToSave:{en:"Sign in to save",mn:"Хадгалахын тулд нэвтэрнэ үү"},
+  authHint:{en:"New here? Enter an email + password and press Sign up. Otherwise Sign in.",mn:"Шинэ хэрэглэгч үү? Имэйл, нууц үг оруулаад Бүртгүүлэх дар. Үгүй бол Нэвтрэх."},
   savedAs:{en:"Saved as Version",mn:"Хадгалсан: Хувилбар"},
   restoredV:{en:"Restored Version",mn:"Сэргээв: Хувилбар"},
   solverNote:{en:"CP-SAT in production · heuristic solver in this mockup",mn:"Бодит хувилбарт CP-SAT · энэ загварт эвристик"},
@@ -295,87 +321,87 @@ const SEED_COURSES = [
   cc(25, ["4A"], "t8", "h1", { name:"НББ-ийн мэргэжлийн судалгаа", sem:0.25 }),
 ];
 const SEED_PLACED = [
-  {id:"P0",courseIdx:22,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:1,room:"307",parity:"weekly",locked:false},
-  {id:"P1",courseIdx:22,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:1,room:"307",parity:"weekly",locked:false},
-  {id:"P2",courseIdx:22,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:1,room:"307",parity:"weekly",locked:false},
-  {id:"P3",courseIdx:22,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:1,room:"307",parity:"weekly",locked:false},
-  {id:"P4",courseIdx:22,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:2,room:"307",parity:"weekly",locked:false},
-  {id:"P5",courseIdx:22,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:3,room:"307",parity:"weekly",locked:false},
-  {id:"P6",courseIdx:8,ins:"t8",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"fri",period:1,room:"104",parity:"weekly",locked:false},
-  {id:"P7",courseIdx:8,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:1,room:"304",parity:"weekly",locked:false},
-  {id:"P8",courseIdx:8,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"fri",period:2,room:"309",parity:"weekly",locked:false},
-  {id:"P9",courseIdx:8,ins:"t8",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:2,room:"304",parity:"weekly",locked:false},
-  {id:"P10",courseIdx:8,ins:"t8",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:3,room:"309",parity:"weekly",locked:false},
-  {id:"P11",courseIdx:13,ins:"t11",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["2A","2B"],students:40,day:"thu",period:1,room:"104",parity:"weekly",locked:false},
-  {id:"P12",courseIdx:13,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2A"],students:20,day:"fri",period:1,room:"308",parity:"weekly",locked:false},
+  {id:"P0",courseIdx:22,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:1,room:"307",parity:"weekly",locked:false},
+  {id:"P1",courseIdx:22,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:1,room:"307",parity:"weekly",locked:false},
+  {id:"P2",courseIdx:22,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:1,room:"307",parity:"weekly",locked:false},
+  {id:"P3",courseIdx:22,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:2,room:"307",parity:"weekly",locked:false},
+  {id:"P4",courseIdx:22,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:3,room:"307",parity:"weekly",locked:false},
+  {id:"P5",courseIdx:22,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"mon",period:4,room:"307",parity:"weekly",locked:false},
+  {id:"P6",courseIdx:8,ins:"t8",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"tue",period:1,room:"104",parity:"weekly",locked:false},
+  {id:"P7",courseIdx:8,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"thu",period:1,room:"304",parity:"weekly",locked:false},
+  {id:"P8",courseIdx:8,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"fri",period:1,room:"309",parity:"weekly",locked:false},
+  {id:"P9",courseIdx:8,ins:"t8",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:1,room:"304",parity:"weekly",locked:false},
+  {id:"P10",courseIdx:8,ins:"t8",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:2,room:"309",parity:"weekly",locked:false},
+  {id:"P11",courseIdx:13,ins:"t11",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["2A","2B"],students:40,day:"tue",period:1,room:"306",parity:"weekly",locked:false},
+  {id:"P12",courseIdx:13,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2A"],students:20,day:"thu",period:1,room:"308",parity:"weekly",locked:false},
   {id:"P13",courseIdx:13,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2B"],students:20,day:"mon",period:1,room:"305",parity:"weekly",locked:false},
   {id:"P14",courseIdx:13,ins:"t11",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2A"],students:20,day:"mon",period:3,room:"308",parity:"weekly",locked:false},
   {id:"P15",courseIdx:13,ins:"t11",type:"B",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["2B"],students:20,day:"mon",period:2,room:"305",parity:"weekly",locked:false},
-  {id:"P16",courseIdx:14,ins:"t13",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["2A","2B"],students:40,day:"wed",period:1,room:"104",parity:"weekly",locked:false},
-  {id:"P17",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2A"],students:20,day:"mon",period:2,room:"201",parity:"weekly",locked:false},
-  {id:"P18",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2B"],students:20,day:"fri",period:1,room:"201",parity:"weekly",locked:false},
-  {id:"P19",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2A"],students:20,day:"wed",period:2,room:"201",parity:"weekly",locked:false},
-  {id:"P20",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2B"],students:20,day:"fri",period:2,room:"201",parity:"weekly",locked:false},
-  {id:"P21",courseIdx:21,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"fri",period:1,room:"303",parity:"weekly",locked:false},
+  {id:"P16",courseIdx:14,ins:"t13",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["2A","2B"],students:40,day:"fri",period:1,room:"104",parity:"weekly",locked:false},
+  {id:"P17",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2A"],students:20,day:"mon",period:1,room:"201",parity:"weekly",locked:false},
+  {id:"P18",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2B"],students:20,day:"fri",period:2,room:"201",parity:"weekly",locked:false},
+  {id:"P19",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2A"],students:20,day:"mon",period:2,room:"201",parity:"weekly",locked:false},
+  {id:"P20",courseIdx:14,ins:"t13",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["2B"],students:20,day:"fri",period:3,room:"201",parity:"weekly",locked:false},
+  {id:"P21",courseIdx:21,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"thu",period:1,room:"303",parity:"weekly",locked:false},
   {id:"P22",courseIdx:21,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"wed",period:1,room:"303",parity:"weekly",locked:false},
-  {id:"P23",courseIdx:21,ins:"t14",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"mon",period:3,room:"201",parity:"weekly",locked:false},
-  {id:"P24",courseIdx:21,ins:"t14",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"mon",period:4,room:"201",parity:"weekly",locked:false},
-  {id:"P25",courseIdx:23,ins:"t15",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:1,room:"307",parity:"weekly",locked:false},
-  {id:"P26",courseIdx:23,ins:"t15",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:2,room:"307",parity:"weekly",locked:false},
-  {id:"P27",courseIdx:23,ins:"t15",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:2,room:"307",parity:"weekly",locked:false},
+  {id:"P23",courseIdx:21,ins:"t14",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"fri",period:1,room:"201",parity:"weekly",locked:false},
+  {id:"P24",courseIdx:21,ins:"t14",type:"Lab",roomType:"lab",freq:"weekly",phase:"h2",cohorts:["3A"],students:20,day:"thu",period:2,room:"201",parity:"weekly",locked:false},
+  {id:"P25",courseIdx:23,ins:"t15",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:1,room:"307",parity:"weekly",locked:false},
+  {id:"P26",courseIdx:23,ins:"t15",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:1,room:"307",parity:"weekly",locked:false},
+  {id:"P27",courseIdx:23,ins:"t15",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:2,room:"307",parity:"weekly",locked:false},
   {id:"P28",courseIdx:23,ins:"t15",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:2,room:"307",parity:"weekly",locked:false},
-  {id:"P29",courseIdx:24,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:2,room:"307",parity:"weekly",locked:false},
-  {id:"P30",courseIdx:24,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:3,room:"307",parity:"weekly",locked:false},
+  {id:"P29",courseIdx:24,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:2,room:"307",parity:"weekly",locked:false},
+  {id:"P30",courseIdx:24,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:2,room:"307",parity:"weekly",locked:false},
   {id:"P31",courseIdx:24,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"thu",period:3,room:"307",parity:"weekly",locked:false},
-  {id:"P32",courseIdx:24,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"wed",period:3,room:"307",parity:"weekly",locked:false},
-  {id:"P33",courseIdx:1,ins:"t1",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["1A","1B"],students:48,day:"tue",period:1,room:"104",parity:"weekly",locked:false},
-  {id:"P34",courseIdx:1,ins:"t1",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["1A"],students:24,day:"thu",period:1,room:"304",parity:"weekly",locked:false},
-  {id:"P35",courseIdx:1,ins:"t1",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["1B"],students:24,day:"wed",period:1,room:"309",parity:"weekly",locked:false},
-  {id:"P36",courseIdx:2,ins:"t2",type:"L",roomType:"lecture",freq:"biweekly",phase:"full",cohorts:["1A","1B"],students:48,day:"tue",period:2,room:"104",parity:"even",locked:false},
-  {id:"P37",courseIdx:2,ins:"t2",type:"Lab",roomType:"lab",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"wed",period:1,room:"201",parity:"weekly",locked:false},
-  {id:"P38",courseIdx:2,ins:"t2",type:"Lab",roomType:"lab",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"thu",period:1,room:"201",parity:"weekly",locked:false},
-  {id:"P39",courseIdx:3,ins:"t3",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"wed",period:2,room:"104",parity:"weekly",locked:false},
-  {id:"P40",courseIdx:3,ins:"t3",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"thu",period:2,room:"304",parity:"weekly",locked:false},
-  {id:"P41",courseIdx:3,ins:"t3",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:2,room:"309",parity:"weekly",locked:false},
+  {id:"P32",courseIdx:24,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:3,room:"307",parity:"weekly",locked:false},
+  {id:"P33",courseIdx:1,ins:"t1",type:"L",roomType:"lecture",freq:"weekly",phase:"h1",cohorts:["1A","1B"],students:48,day:"wed",period:1,room:"104",parity:"weekly",locked:false},
+  {id:"P34",courseIdx:1,ins:"t1",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["1A"],students:24,day:"fri",period:1,room:"304",parity:"weekly",locked:false},
+  {id:"P35",courseIdx:1,ins:"t1",type:"S",roomType:"seminar",freq:"weekly",phase:"h1",cohorts:["1B"],students:24,day:"thu",period:1,room:"309",parity:"weekly",locked:false},
+  {id:"P36",courseIdx:2,ins:"t2",type:"L",roomType:"lecture",freq:"biweekly",phase:"full",cohorts:["1A","1B"],students:48,day:"thu",period:2,room:"104",parity:"odd",locked:false},
+  {id:"P37",courseIdx:2,ins:"t2",type:"Lab",roomType:"lab",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"thu",period:3,room:"201",parity:"weekly",locked:false},
+  {id:"P38",courseIdx:2,ins:"t2",type:"Lab",roomType:"lab",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:3,room:"201",parity:"weekly",locked:false},
+  {id:"P39",courseIdx:3,ins:"t3",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"tue",period:2,room:"104",parity:"weekly",locked:false},
+  {id:"P40",courseIdx:3,ins:"t3",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"fri",period:2,room:"304",parity:"weekly",locked:false},
+  {id:"P41",courseIdx:3,ins:"t3",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"wed",period:2,room:"309",parity:"weekly",locked:false},
   {id:"P42",courseIdx:6,ins:"t6",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"tue",period:3,room:"104",parity:"weekly",locked:false},
-  {id:"P43",courseIdx:6,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"fri",period:2,room:"304",parity:"weekly",locked:false},
-  {id:"P44",courseIdx:6,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"thu",period:2,room:"309",parity:"weekly",locked:false},
-  {id:"P45",courseIdx:7,ins:"t7",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"fri",period:3,room:"104",parity:"weekly",locked:false},
-  {id:"P46",courseIdx:7,ins:"t7",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:3,room:"304",parity:"weekly",locked:false},
+  {id:"P43",courseIdx:6,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"wed",period:2,room:"304",parity:"weekly",locked:false},
+  {id:"P44",courseIdx:6,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"fri",period:2,room:"309",parity:"weekly",locked:false},
+  {id:"P45",courseIdx:7,ins:"t7",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"wed",period:3,room:"104",parity:"weekly",locked:false},
+  {id:"P46",courseIdx:7,ins:"t7",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:2,room:"304",parity:"weekly",locked:false},
   {id:"P47",courseIdx:7,ins:"t7",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"mon",period:1,room:"309",parity:"weekly",locked:false},
-  {id:"P48",courseIdx:9,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"tue",period:1,room:"306",parity:"weekly",locked:false},
-  {id:"P49",courseIdx:9,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"thu",period:2,room:"308",parity:"weekly",locked:false},
-  {id:"P50",courseIdx:9,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"mon",period:3,room:"305",parity:"weekly",locked:false},
+  {id:"P48",courseIdx:9,ins:"t9",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:1,room:"306",parity:"weekly",locked:false},
+  {id:"P49",courseIdx:9,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"fri",period:2,room:"308",parity:"weekly",locked:false},
+  {id:"P50",courseIdx:9,ins:"t9",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"thu",period:1,room:"305",parity:"weekly",locked:false},
   {id:"P51",courseIdx:10,ins:"t10",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"tue",period:2,room:"306",parity:"weekly",locked:false},
-  {id:"P52",courseIdx:10,ins:"t10",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"fri",period:2,room:"308",parity:"weekly",locked:false},
-  {id:"P53",courseIdx:10,ins:"t10",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"thu",period:2,room:"305",parity:"weekly",locked:false},
-  {id:"P54",courseIdx:11,ins:"t11",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"tue",period:3,room:"306",parity:"weekly",locked:false},
-  {id:"P55",courseIdx:11,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"mon",period:4,room:"308",parity:"weekly",locked:false},
-  {id:"P56",courseIdx:11,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"wed",period:2,room:"305",parity:"weekly",locked:false},
-  {id:"P57",courseIdx:12,ins:"t12",type:"L",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:3,room:"ONLINE",parity:"weekly",locked:false},
-  {id:"P58",courseIdx:12,ins:"t12",type:"S",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"fri",period:3,room:"ONLINE",parity:"weekly",locked:false},
-  {id:"P59",courseIdx:12,ins:"t12",type:"B",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"fri",period:4,room:"ONLINE",parity:"weekly",locked:false},
-  {id:"P60",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"thu",period:3,room:"308",parity:"weekly",locked:false},
-  {id:"P61",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"thu",period:4,room:"308",parity:"weekly",locked:false},
-  {id:"P62",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:4,room:"308",parity:"weekly",locked:false},
-  {id:"P63",courseIdx:16,ins:"t5",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:1,room:"303",parity:"weekly",locked:false},
-  {id:"P64",courseIdx:16,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P52",courseIdx:10,ins:"t10",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"thu",period:2,room:"308",parity:"weekly",locked:false},
+  {id:"P53",courseIdx:10,ins:"t10",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"mon",period:3,room:"305",parity:"weekly",locked:false},
+  {id:"P54",courseIdx:11,ins:"t11",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:2,room:"104",parity:"weekly",locked:false},
+  {id:"P55",courseIdx:11,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A"],students:20,day:"fri",period:3,room:"308",parity:"weekly",locked:false},
+  {id:"P56",courseIdx:11,ins:"t11",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2B"],students:20,day:"thu",period:2,room:"305",parity:"weekly",locked:false},
+  {id:"P57",courseIdx:12,ins:"t12",type:"L",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"tue",period:3,room:"ONLINE",parity:"weekly",locked:false},
+  {id:"P58",courseIdx:12,ins:"t12",type:"S",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:3,room:"ONLINE",parity:"weekly",locked:false},
+  {id:"P59",courseIdx:12,ins:"t12",type:"B",roomType:"online",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"thu",period:3,room:"ONLINE",parity:"weekly",locked:false},
+  {id:"P60",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"thu",period:4,room:"308",parity:"weekly",locked:false},
+  {id:"P61",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"wed",period:4,room:"308",parity:"weekly",locked:false},
+  {id:"P62",courseIdx:15,ins:"t6",parallel:true,ins2:"t16",room2:"305",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["2A","2B"],students:40,day:"fri",period:4,room:"308",parity:"weekly",locked:false},
+  {id:"P63",courseIdx:16,ins:"t5",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:1,room:"303",parity:"weekly",locked:false},
+  {id:"P64",courseIdx:16,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:1,room:"303",parity:"weekly",locked:false},
   {id:"P65",courseIdx:16,ins:"t5",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:2,room:"303",parity:"weekly",locked:false},
-  {id:"P66",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:1,room:"303",parity:"weekly",locked:false},
-  {id:"P67",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"wed",period:2,room:"303",parity:"weekly",locked:false},
-  {id:"P68",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:2,room:"303",parity:"weekly",locked:false},
-  {id:"P69",courseIdx:20,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:2,room:"303",parity:"weekly",locked:false},
-  {id:"P70",courseIdx:20,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:3,room:"303",parity:"weekly",locked:false},
-  {id:"P71",courseIdx:20,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:4,room:"303",parity:"weekly",locked:false},
-  {id:"P72",courseIdx:4,ins:"t4",type:"L",roomType:"online",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"wed",period:3,room:"ONLINE",parity:"weekly",locked:false},
-  {id:"P73",courseIdx:4,ins:"t4",type:"S",roomType:"online",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"thu",period:3,room:"ONLINE",parity:"weekly",locked:false},
-  {id:"P74",courseIdx:5,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"fri",period:4,room:"304",parity:"weekly",locked:false},
-  {id:"P75",courseIdx:5,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"thu",period:4,room:"309",parity:"weekly",locked:false},
-  {id:"P76",courseIdx:17,ins:"t8",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:3,room:"303",parity:"weekly",locked:false},
+  {id:"P66",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P67",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:3,room:"303",parity:"weekly",locked:false},
+  {id:"P68",courseIdx:19,ins:"t6",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:3,room:"303",parity:"weekly",locked:false},
+  {id:"P69",courseIdx:20,ins:"t14",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"wed",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P70",courseIdx:20,ins:"t14",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:2,room:"303",parity:"weekly",locked:false},
+  {id:"P71",courseIdx:20,ins:"t14",type:"B",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:3,room:"303",parity:"weekly",locked:false},
+  {id:"P72",courseIdx:4,ins:"t4",type:"L",roomType:"online",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"fri",period:3,room:"ONLINE",parity:"weekly",locked:false},
+  {id:"P73",courseIdx:4,ins:"t4",type:"S",roomType:"online",freq:"weekly",phase:"full",cohorts:["1A","1B"],students:48,day:"fri",period:4,room:"ONLINE",parity:"weekly",locked:false},
+  {id:"P74",courseIdx:5,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1A"],students:24,day:"mon",period:3,room:"304",parity:"weekly",locked:false},
+  {id:"P75",courseIdx:5,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["1B"],students:24,day:"thu",period:3,room:"309",parity:"weekly",locked:false},
+  {id:"P76",courseIdx:17,ins:"t8",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"wed",period:3,room:"303",parity:"weekly",locked:false},
   {id:"P77",courseIdx:17,ins:"t8",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"thu",period:4,room:"303",parity:"weekly",locked:false},
-  {id:"P78",courseIdx:18,ins:"t5",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"wed",period:3,room:"303",parity:"weekly",locked:false},
-  {id:"P79",courseIdx:18,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"mon",period:1,room:"303",parity:"weekly",locked:false},
-  {id:"P80",courseIdx:25,ins:"t8",type:"S",roomType:"seminar",freq:"biweekly",phase:"h1",cohorts:["4A"],students:18,day:"fri",period:3,room:"307",parity:"odd",locked:false},
+  {id:"P78",courseIdx:18,ins:"t5",type:"L",roomType:"lecture",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"tue",period:3,room:"303",parity:"weekly",locked:false},
+  {id:"P79",courseIdx:18,ins:"t5",type:"S",roomType:"seminar",freq:"weekly",phase:"full",cohorts:["3A"],students:20,day:"fri",period:4,room:"303",parity:"weekly",locked:false},
+  {id:"P80",courseIdx:25,ins:"t8",type:"S",roomType:"seminar",freq:"biweekly",phase:"h1",cohorts:["4A"],students:18,day:"tue",period:3,room:"307",parity:"even",locked:false},
 ];
 
 // ---------- Derivation ----------
@@ -598,12 +624,14 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     c += rand() * 3;
     return c;
   };
-  const contiguousOK = (s,d,p) => { // a cohort's day must stay one unbroken block
-    for (const co of s.cohorts) {
+  const contiguousOK = (s,d,p) => { // each half a student attends must be an unbroken block
+    for (const half of PHASES_OF[s.phase]) for (const co of s.cohorts) {
       let mn=99, mx=0, any=false, has=false;
-      for (const x of placed) if (x.day===d && x.cohorts.includes(co)) { any=true; if (x.period<mn) mn=x.period; if (x.period>mx) mx=x.period; if (x.period===p) has=true; }
-      if (!any || has) continue;                 // first class of the day, or same slot (biweekly pair) → fine
-      if (p !== mn-1 && p !== mx+1) return false; // otherwise must extend the block — no gap allowed
+      for (const x of placed) if (x.day===d && x.cohorts.includes(co) && PHASES_OF[x.phase].includes(half)) {
+        any=true; if (x.period<mn) mn=x.period; if (x.period>mx) mx=x.period; if (x.period===p) has=true;
+      }
+      if (!any || has) continue;                 // first class of this half's day, or same slot → fine
+      if (p !== mn-1 && p !== mx+1) return false; // otherwise must extend the block — no gap in this half
     }
     return true;
   };
@@ -1257,6 +1285,86 @@ function CourseEditor({ lang, courses, setCourses, teachers, setTeachers, termSt
 // ============================================================================
 //  App
 // ============================================================================
+function AuthModal({ lang, msg, onClose, onAuth }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  return (
+    <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:"#1a2438aa" }} onClick={onClose}>
+      <div className="rounded-xl max-w-sm w-full" style={{ background:PAPER }} onClick={(e)=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3" style={{ background:INK, color:PAPER }}>
+          <div className="flex items-center gap-2 font-semibold text-[14px]"><User size={15}/> {tr(lang,"signIn")}</div>
+          <button onClick={onClose} className="rounded-md p-1" style={{ background:"#ffffff1a" }}><X size={16}/></button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div className="text-[11px] opacity-60">{tr(lang,"authHint")}</div>
+          <div>
+            <label className="text-[11px] opacity-60">{tr(lang,"emailLbl")}</label>
+            <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} className="w-full rounded border px-2 py-1.5 text-[13px] mt-0.5" style={{ borderColor:LINE }} autoFocus />
+          </div>
+          <div>
+            <label className="text-[11px] opacity-60">{tr(lang,"passwordLbl")}</label>
+            <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} className="w-full rounded border px-2 py-1.5 text-[13px] mt-0.5" style={{ borderColor:LINE }} />
+          </div>
+          {msg && <div className="text-[11px]" style={{ color: msg==="…"?"#6b7280":"#b91c1c" }}>{msg}</div>}
+          <div className="flex gap-2 pt-1">
+            <button onClick={()=>onAuth("in", email, password)} className="flex-1 rounded-md py-2 text-[13px] font-semibold" style={{ background:INK, color:PAPER }}>{tr(lang,"signIn")}</button>
+            <button onClick={()=>onAuth("up", email, password)} className="flex-1 rounded-md py-2 text-[13px] font-semibold" style={{ background:"#fbfaf6", border:`1px solid ${LINE}` }}>{tr(lang,"signUp")}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function CloudModal({ lang, email, list, termStart, onClose, onSave, onLoad, onDelete, onSignOut }) {
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState("checkpoint");
+  const badge = { draft:"#6b7280", checkpoint:"#16a34a", final:"#7c3aed" };
+  return (
+    <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:"#1a2438aa" }} onClick={onClose}>
+      <div className="rounded-xl max-w-xl w-full max-h-[85vh] overflow-auto" style={{ background:PAPER }} onClick={(e)=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 sticky top-0" style={{ background:INK, color:PAPER }}>
+          <div className="flex items-center gap-2 font-semibold text-[14px]"><History size={15}/> {tr(lang,"cloudTitle")}</div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] opacity-70 hidden sm:inline">{email}</span>
+            <button onClick={onSignOut} className="rounded-md px-2 py-1 text-[11px]" style={{ background:"#ffffff1a" }}>{tr(lang,"signOut")}</button>
+            <button onClick={onClose} className="rounded-md p-1" style={{ background:"#ffffff1a" }}><X size={16}/></button>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="rounded-lg p-3 flex flex-wrap items-end gap-2" style={{ background:"#fbfaf6", border:`1px solid ${LINE}` }}>
+            <div className="flex-1 min-w-[160px]">
+              <label className="text-[11px] opacity-60">{tr(lang,"scheduleName")}</label>
+              <input value={name} onChange={(e)=>setName(e.target.value)} placeholder={`Fall ${termStart||""}`} className="w-full rounded border px-2 py-1.5 text-[13px] mt-0.5" style={{ borderColor:LINE }} />
+            </div>
+            <select value={status} onChange={(e)=>setStatus(e.target.value)} className="rounded border px-2 py-1.5 text-[12px]" style={{ borderColor:LINE }}>
+              <option value="draft">{tr(lang,"statusDraft")}</option>
+              <option value="checkpoint">{tr(lang,"statusCheckpoint")}</option>
+              <option value="final">{tr(lang,"statusFinal")}</option>
+            </select>
+            <button onClick={()=>{ onSave(name, status); setName(""); }} className="rounded-md px-3 py-2 text-[13px] font-semibold flex items-center gap-1.5" style={{ background:INK, color:PAPER }}><Save size={13}/> {tr(lang,"saveToCloud")}</button>
+          </div>
+          {list.length===0 ? (
+            <div className="text-[12px] opacity-50 text-center py-6">{tr(lang,"noSaved")}</div>
+          ) : (
+            <div className="space-y-1.5">
+              {list.map((row)=>(
+                <div key={row.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background:"#fff", border:`1px solid ${LINE}` }}>
+                  <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase" style={{ background:`${badge[row.status]||"#6b7280"}22`, color:badge[row.status]||"#6b7280" }}>{tr(lang,"status"+(row.status||"draft").charAt(0).toUpperCase()+(row.status||"draft").slice(1))||row.status}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium truncate">{row.name}</div>
+                    <div className="text-[10px] opacity-50">{new Date(row.updated_at).toLocaleString()}</div>
+                  </div>
+                  <button onClick={()=>onLoad(row.id)} className="rounded-md px-2.5 py-1 text-[12px] font-semibold" style={{ background:INK, color:PAPER }}>{tr(lang,"loadBtn")}</button>
+                  <button onClick={()=>onDelete(row.id)} className="opacity-40 hover:opacity-100" style={{ color:"#be123c" }}><Trash2 size={14}/></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function App() {
   const [lang, setLang] = useState("en");
   const [screen, setScreen] = useState("timetable");
@@ -1284,6 +1392,11 @@ export default function App() {
   const [showData, setShowData] = useState(false);
   const [rules, setRules] = useState(DEFAULT_RULES);
   const [showRules, setShowRules] = useState(false);
+  const [session, setSession] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showCloud, setShowCloud] = useState(false);
+  const [cloudList, setCloudList] = useState([]);
+  const [authMsg, setAuthMsg] = useState("");
   const t = useCallback((k)=>tr(lang,k), [lang]);
 
   const score = useMemo(()=> placed.length ? scoreSchedule(placed, unplaced, teachers) : null, [placed, unplaced, teachers]);
@@ -1337,6 +1450,39 @@ export default function App() {
     else { setPlaced(clone(v.snapshot)); setUnplaced([]); } // back-compat with schedule-only snapshots
     showToast("valid", `${t("restoredV")} V${v.id}`);
   };
+
+  // ---- Supabase auth + cloud schedules ----
+  useEffect(()=>{ if (!supabase) return; let sub;
+    supabase.auth.getSession().then(({ data })=>setSession(data.session)).catch(()=>{});
+    sub = supabase.auth.onAuthStateChange((_e, s)=>setSession(s)).data?.subscription;
+    return ()=>{ if (sub) sub.unsubscribe(); };
+  }, []);
+  const refreshCloud = useCallback(async ()=>{ if (!supabase || !session) return;
+    const { data, error } = await supabase.from("schedules").select("id,name,term,status,updated_at").order("updated_at",{ ascending:false });
+    if (!error) setCloudList(data||[]);
+  }, [session]);
+  useEffect(()=>{ if (session) refreshCloud(); else setCloudList([]); }, [session, refreshCloud]);
+  const doAuth = async (mode, email, password)=>{ if (!supabase) return; setAuthMsg("…");
+    const fn = mode==="up" ? supabase.auth.signUp({ email, password }) : supabase.auth.signInWithPassword({ email, password });
+    const { error } = await fn;
+    if (error) setAuthMsg(error.message);
+    else { setAuthMsg(""); setShowAuth(false); }
+  };
+  const signOut = async ()=>{ if (supabase) await supabase.auth.signOut(); setSession(null); setShowCloud(false); };
+  const cloudSnapshot = ()=>({ placed, unplaced, courses, teachers, termStart, roomPri, rules });
+  const cloudSave = async (name, status)=>{ if (!supabase || !session) return;
+    const { error } = await supabase.from("schedules").insert({ user_id:session.user.id, name:name||("Schedule "+new Date().toLocaleString()), term:`${termStart}`, status, data:cloudSnapshot() });
+    if (error) showToast("conflict", `${t("cloudErr")}: ${error.message}`); else { showToast("valid", t("cloudSaved")); refreshCloud(); }
+  };
+  const cloudLoad = async (id)=>{ if (!supabase) return;
+    const { data, error } = await supabase.from("schedules").select("data").eq("id",id).single();
+    if (error || !data) { showToast("conflict", t("cloudErr")); return; }
+    const s = data.data; if (s.placed) { setPlaced(clone(s.placed)); setUnplaced(clone(s.unplaced||[]));
+      if (s.courses) setCourses(clone(s.courses)); if (s.teachers) setTeachers(clone(s.teachers));
+      if (s.termStart) setTermStart(s.termStart); if (s.roomPri) setRoomPri(clone(s.roomPri)); if (s.rules) setRules(clone(s.rules)); }
+    setShowCloud(false); showToast("valid", t("cloudLoaded"));
+  };
+  const cloudDelete = async (id)=>{ if (!supabase) return; await supabase.from("schedules").delete().eq("id",id); refreshCloud(); };
 
   const visible = useMemo(()=>{
     let list = placed.filter((s)=>phaseVisible(s.phase, semView));
@@ -1407,6 +1553,11 @@ export default function App() {
             <button onClick={()=>runGenerate(hasHalves?"half":"all")} title={hasHalves?t("regenHalfHint"):undefined} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><RotateCw size={13}/> <span className="hidden lg:inline">{hasHalves ? `${t("regenerate")} · ${semView==="h1"?t("firstHalfShort"):t("secondHalfShort")}` : t("regenerate")}</span></button>
             <button onClick={saveVersion} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><Save size={13}/> <span className="hidden lg:inline">{t("saveVersion")}</span></button>
             <button onClick={()=>setShowRules(true)} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><Layers size={13}/> <span className="hidden lg:inline">{t("rulesBtn")}</span></button>
+            {supabase && (session ? (
+              <button onClick={()=>{ setShowCloud(true); refreshCloud(); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#16a34a33" }} title={session.user.email}><History size={13}/> <span className="hidden lg:inline">{t("mySchedules")}</span></button>
+            ) : (
+              <button onClick={()=>{ setAuthMsg(""); setShowAuth(true); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><User size={13}/> <span className="hidden lg:inline">{t("signIn")}</span></button>
+            ))}
             <button onClick={()=>exportCSV(placed, lang, courses, teachers, semView)} className="rounded-md px-2 py-1.5" style={{ background:"#ffffff1a" }} title="Excel / CSV"><Download size={14}/></button>
             <button onClick={()=>window.print()} className="rounded-md px-2 py-1.5" style={{ background:"#ffffff1a" }} title="PDF"><Printer size={14}/></button>
           </div>
@@ -1449,6 +1600,14 @@ export default function App() {
           </>}
         </div>
       </header>
+
+      {/* Auth modal */}
+      {showAuth && <AuthModal lang={lang} msg={authMsg} onClose={()=>setShowAuth(false)} onAuth={doAuth} />}
+      {/* Cloud schedules modal */}
+      {showCloud && session && (
+        <CloudModal lang={lang} email={session.user.email} list={cloudList} termStart={termStart}
+          onClose={()=>setShowCloud(false)} onSave={cloudSave} onLoad={cloudLoad} onDelete={cloudDelete} onSignOut={signOut} />
+      )}
 
       {/* Rules panel */}
       {showRules && (
