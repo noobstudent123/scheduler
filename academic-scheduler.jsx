@@ -789,17 +789,21 @@ function cohortLoad(courses) {
 }
 
 // ---------- Scoring ----------
-function scoreSchedule(placed, unplaced, teachers) {
+// half = "h1" | "h2" scores just that half; null/undefined scores the whole year (both halves)
+function scoreSchedule(placed, unplaced, teachers, half=null) {
+  const halves = half ? [half] : ["h1","h2"];
+  const inHalf = (s) => half ? PHASES_OF[s.phase].includes(half) : true;
+  placed = placed.filter(inHalf); unplaced = unplaced.filter(inHalf);
   let gaps=0, imb=0, p4=0, tueLate=0, intBW=0;
-  for (const half of ["h1","h2"]) {
+  for (const h of halves) {
     const cd = {}; COHORTS.forEach((c)=>{ cd[c.id]={}; DAYS.forEach((d)=>cd[c.id][d.id]=new Set()); });
-    placed.forEach((s)=>{ if (PHASES_OF[s.phase].includes(half)) s.cohorts.forEach((c)=>{ if (cd[c]) cd[c][s.day].add(s.period); }); });
+    placed.forEach((s)=>{ if (PHASES_OF[s.phase].includes(h)) s.cohorts.forEach((c)=>{ if (cd[c]) cd[c][s.day].add(s.period); }); });
     for (const c of COHORTS) { const pd=[];
       for (const d of DAYS) { const arr=[...cd[c.id][d.id]].sort((a,b)=>a-b); pd.push(arr.length);
         if (arr.length) gaps += (arr[arr.length-1]-arr[0]+1)-arr.length; }
       const nz = pd.filter((x)=>x>0); if (nz.length) imb += Math.max(...nz)-Math.min(...nz);
     }
-    placed.forEach((s)=>{ if (s.parity!=="weekly" && PHASES_OF[s.phase].includes(half)) s.cohorts.forEach((co)=>{ if (!cd[co]) return; const arr=[...cd[co][s.day]]; if (arr.length){ const mn=Math.min(...arr), mx=Math.max(...arr); if (s.period>mn && s.period<mx) intBW++; } }); });
+    placed.forEach((s)=>{ if (s.parity!=="weekly" && PHASES_OF[s.phase].includes(h)) s.cohorts.forEach((co)=>{ if (!cd[co]) return; const arr=[...cd[co][s.day]]; if (arr.length){ const mn=Math.min(...arr), mx=Math.max(...arr); if (s.period>mn && s.period<mx) intBW++; } }); });
   }
   placed.forEach((s)=>{ if (s.period===4) p4++; if (s.day==="tue" && s.period>=4) tueLate++; });
   let dupes=0; { const seen={}; placed.forEach((s)=>s.cohorts.forEach((c)=>{ const k=c+"|"+s.day+"|"+s.courseIdx; (seen[k]=seen[k]||new Set()).add(s.period); }));
@@ -1546,7 +1550,7 @@ export default function App() {
   const [authMsg, setAuthMsg] = useState("");
   const t = useCallback((k)=>tr(lang,k), [lang]);
 
-  const score = useMemo(()=> placed.length ? scoreSchedule(placed, unplaced, teachers) : null, [placed, unplaced, teachers]);
+  const score = useMemo(()=> placed.length ? scoreSchedule(placed, unplaced, teachers, semView) : null, [placed, unplaced, teachers, semView]);
   const overloaded = useMemo(()=>{ const load = cohortLoad(courses); const out=[]; const TH = SLOTS_PER_HALF-1;
     for (const c of COHORTS) { const h1=Math.round(load[c.id].h1), h2=Math.round(load[c.id].h2);
       if (h1>=TH || h2>=TH) out.push({ id:c.id, h1, h2 }); }
@@ -1932,7 +1936,7 @@ export default function App() {
             )}
 
             {score && (
-              <Panel title={t("scheduleQuality")} icon={Sparkles}>
+              <Panel title={`${t("scheduleQuality")} · ${semView==="h1"?t("firstHalfShort"):t("secondHalfShort")}`} icon={Sparkles}>
                 <div className="flex items-baseline gap-1 mb-3"><span className="text-3xl font-bold">{score.overall}</span><span className="opacity-40 text-sm">/ 100</span></div>
                 <div className="space-y-2">
                   <Bar label={t("hardConstraints")} value={score.parts.hard}/><Bar label={t("studentExp")} value={score.parts.student}/>
@@ -1949,12 +1953,13 @@ export default function App() {
               <Panel title={t("candidates")} icon={Layers}>
                 <p className="text-[11px] opacity-55 mb-2">{t("pickOption")}</p>
                 <div className="space-y-1.5">
-                  {candidates.slice(0,6).map((c,i)=>{ const col = c.score.overall>=90?"#0d9488":c.score.overall>=75?"#b45309":"#be123c"; const act = i===activeCand;
+                  {candidates.slice(0,6).map((c,i)=>{ const hs = scoreSchedule(c.placed, c.unplaced, teachers, semView); const col = hs.overall>=90?"#0d9488":hs.overall>=75?"#b45309":"#be123c"; const act = i===activeCand;
+                    const hUn = c.unplaced.filter((s)=>phaseVisible(s.phase, semView)).length;
                     return (<button key={i} onClick={()=>selectCandidate(i)} className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-[12px]" style={act?{ background:INK, color:PAPER }:{ background:"#fbfaf6" }}>
                       {act ? <Check size={13}/> : <span className="w-3.5"/>}
                       <span className="flex-1 text-left font-medium">{t("option")} {i+1}</span>
-                      {c.unplaced.length>0 && <span className="text-[10px]" style={{ color:act?"#ffb4a4":"#be123c" }}>{c.unplaced.length}⚠</span>}
-                      <span className="font-bold" style={act?{}:{ color:col }}>{c.score.overall}</span>
+                      {hUn>0 && <span className="text-[10px]" style={{ color:act?"#ffb4a4":"#be123c" }}>{hUn}⚠</span>}
+                      <span className="font-bold" style={act?{}:{ color:col }}>{hs.overall}</span>
                     </button>);
                   })}
                 </div>
