@@ -92,7 +92,10 @@ const STR = {
   secondHalf:{en:"Second half",mn:"Сүүлийн хагас"},
   oddWk:{en:"Odd wks",mn:"Сондгой"},
   evenWk:{en:"Even wks",mn:"Тэгш"},
-  noVersions:{en:"No saved versions yet. “Save” snapshots the current option so you can return to it.",mn:"Хадгалсан хувилбар алга. “Хадгалах” нь одоогийн хувилбарыг хадгална."},
+  noVersions:{en:"No saved versions yet. Press Save to store the current schedule as a version you can return to.",mn:"Хадгалсан хувилбар алга. Одоогийн хуваарийг хувилбар болгон хадгалахын тулд Хадгалах дар."},
+  renameVersion:{en:"Rename this version:",mn:"Хувилбарын нэрийг өөрчлөх:"},
+  delete:{en:"Delete",mn:"Устгах"},
+  signInSaveVersions:{en:"Sign in to save versions you can return to (across sessions and devices).",mn:"Хувилбар хадгалахын тулд нэвтэрнэ үү (сесс, төхөөрөмж хооронд)."},
   unplacedHint:{en:"No feasible slot with a free room + instructor. Unlock nearby classes or add a room/period.",mn:"Багш, өрөө сул зэрэгцэх цаг олдсонгүй. Ойролцоох хичээлийг тайлах эсвэл өрөө/цаг нэмнэ үү."},
   dragHint:{en:"Drag a class to an empty slot — hard conflicts are blocked live. Split cells alternate by week: top-left = odd, bottom-right = even. Hatched = Tuesday after 13:45.",mn:"Хичээлийг сул нүд рүү чирнэ үү — хатуу зөрчлийг шууд хориглоно. Хуваасан нүд долоо хоногоор ээлжилнэ: зүүн дээд = сондгой, баруун доод = тэгш. Судалтай = Мягмар 13:45-аас хойш."},
   importWhat:{en:"This is what the app parsed from your Excel import. Resolve any flags below before trusting the generated schedule.",mn:"Энэ бол Excel-ээс уншсан мэдээлэл. Хуваарийг найдахаас өмнө доорх анхааруулгыг шийднэ үү."},
@@ -1435,7 +1438,7 @@ export default function App() {
     const steps = ["gen1","gen2","gen3","gen4","gen5"]; let i=0; setGenStep(steps[0]);
     const iv = setInterval(()=>{ i++; if (i<steps.length) setGenStep(steps[i]); }, 130);
     setTimeout(()=>{ clearInterval(iv);
-      const cands = generateCandidates(courses, teachers, locks, 60, rules);
+      const cands = generateCandidates(courses, teachers, locks, 12, rules);
       setCandidates(cands); setActiveCand(0);
       setPlaced(clone(cands[0].placed)); setUnplaced(cands[0].unplaced);
       setGenerating(false); setSelected(null);
@@ -1514,6 +1517,7 @@ export default function App() {
     setShowCloud(false); showToast("valid", t("cloudLoaded"));
   };
   const cloudDelete = async (id)=>{ if (!supabase) return; await supabase.from("schedules").delete().eq("id",id); refreshCloud(); };
+  const cloudRename = async (id, cur)=>{ if (!supabase) return; const name = window.prompt(t("renameVersion"), cur); if (name==null || !name.trim()) return; await supabase.from("schedules").update({ name:name.trim() }).eq("id",id); refreshCloud(); };
 
   const visible = useMemo(()=>{
     let list = placed.filter((s)=>phaseVisible(s.phase, semView));
@@ -1798,7 +1802,7 @@ export default function App() {
               <Panel title={t("candidates")} icon={Layers}>
                 <p className="text-[11px] opacity-55 mb-2">{t("pickOption")}</p>
                 <div className="space-y-1.5">
-                  {candidates.map((c,i)=>{ const col = c.score.overall>=90?"#0d9488":c.score.overall>=75?"#b45309":"#be123c"; const act = i===activeCand;
+                  {candidates.slice(0,6).map((c,i)=>{ const col = c.score.overall>=90?"#0d9488":c.score.overall>=75?"#b45309":"#be123c"; const act = i===activeCand;
                     return (<button key={i} onClick={()=>selectCandidate(i)} className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-[12px]" style={act?{ background:INK, color:PAPER }:{ background:"#fbfaf6" }}>
                       {act ? <Check size={13}/> : <span className="w-3.5"/>}
                       <span className="flex-1 text-left font-medium">{t("option")} {i+1}</span>
@@ -1820,8 +1824,19 @@ export default function App() {
             )}
             {selected && <Panel title={t("classDetail")} icon={Info} onClose={()=>setSelected(null)}><SelectedDetail s={selected} lang={lang} courses={courses} teachers={teachers} placed={placed} half={semView} onLock={()=>toggleLock(selected.id)} onSetRoom={setRoomManual}/></Panel>}
             <Panel title={t("versions")} icon={History}>
-              {versions.length===0 ? <p className="text-[11px] opacity-55">{t("noVersions")}</p> : (
-                <div className="space-y-1.5">{versions.map((v)=>(<div key={v.id} className="flex items-center justify-between rounded-md px-2 py-1.5 text-[11px]" style={{ background:"#fbfaf6" }}><div><span className="font-semibold">V{v.id}</span><span className="opacity-50 ml-1.5">{v.when} · {v.score}</span></div><button onClick={()=>restoreVersion(v)} className="rounded px-2 py-0.5 font-medium" style={{ background:INK, color:PAPER }}>{t("restore")}</button></div>))}</div>
+              {session ? (
+                cloudList.length===0 ? <p className="text-[11px] opacity-55">{t("noVersions")}</p> : (
+                  <div className="space-y-1.5">{[...cloudList].sort((a,b)=>new Date(a.updated_at)-new Date(b.updated_at)).map((v,i)=>(
+                    <div key={v.id} className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px]" style={{ background:"#fbfaf6" }}>
+                      <span className="font-semibold shrink-0">V{i+1}</span>
+                      <div className="flex-1 min-w-0"><div className="truncate">{v.name}</div><div className="opacity-45 text-[10px]">{new Date(v.updated_at).toLocaleString()}</div></div>
+                      <button onClick={()=>cloudLoad(v.id)} title={t("loadBtn")} className="rounded px-2 py-0.5 font-medium shrink-0" style={{ background:INK, color:PAPER }}>{t("loadBtn")}</button>
+                      <button onClick={()=>cloudRename(v.id, v.name)} title={t("renameVersion")} className="opacity-40 hover:opacity-100 shrink-0"><Info size={13}/></button>
+                      <button onClick={()=>cloudDelete(v.id)} title={t("delete")} className="opacity-40 hover:opacity-100 shrink-0" style={{ color:"#be123c" }}><Trash2 size={13}/></button>
+                    </div>))}</div>
+                )
+              ) : (
+                <p className="text-[11px] opacity-55">{t("signInSaveVersions")}</p>
               )}
             </Panel>
           </aside>
