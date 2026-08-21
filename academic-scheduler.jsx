@@ -674,7 +674,7 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     opts.sort((a,b)=>a.c-b.c);
     return opts;
   };
-  let nodes = 0; const BUDGET = 80000;
+  let nodes = 0; const BUDGET = 6000;
   let bestPlaced = placed.slice(); let bestCount = placed.length; // best partial seen (starts at locked-only)
   function dfs(i) {
     if (placed.length > bestCount) { bestCount = placed.length; bestPlaced = placed.slice(); } // remember deepest partial
@@ -695,16 +695,7 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
   const unplaced = order.filter((s)=>!ids.has(s.id));
   return { placed: finalPlaced, unplaced };
 }
-function generateCandidates(courses, teachers, locked, attempts=20, rules=DEFAULT_RULES) {
-  const cands = [];
-  const seen = new Set();
-  for (let a=0;a<attempts;a++) {
-    const res = scheduleOnce(courses, teachers, locked, mulberry32(a*2654435761 + 9973), rules);
-    const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
-    if (seen.has(sig)) continue; seen.add(sig);
-    const score = scoreSchedule(res.placed, res.unplaced, teachers);
-    cands.push({ placed:res.placed, unplaced:res.unplaced, score });
-  }
+function rankCandidates(cands) {
   cands.sort((x,y)=>
     (x.unplaced.length - y.unplaced.length) ||          // 1. hard constraints (all placed)
     (x.score.metrics.gaps  - y.score.metrics.gaps)  ||  // 2. fewest mid-day breaks
@@ -713,6 +704,29 @@ function generateCandidates(courses, teachers, locked, attempts=20, rules=DEFAUL
     (y.score.overall - x.score.overall));               // 5. remaining soft preferences
   return cands;
 }
+function generateCandidates(courses, teachers, locked, attempts=8, rules=DEFAULT_RULES) {
+  const cands = []; const seen = new Set();
+  for (let a=0;a<attempts;a++) {
+    const res = scheduleOnce(courses, teachers, locked, mulberry32(a*2654435761 + 9973), rules);
+    const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
+    if (seen.has(sig)) continue; seen.add(sig);
+    cands.push({ placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) });
+  }
+  return rankCandidates(cands);
+}
+// UI version: yields to the browser between attempts so the page stays responsive
+async function generateCandidatesAsync(courses, teachers, locked, attempts, rules, onProgress) {
+  const cands = []; const seen = new Set();
+  for (let a=0;a<attempts;a++) {
+    const res = scheduleOnce(courses, teachers, locked, mulberry32(a*2654435761 + 9973), rules);
+    const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
+    if (!seen.has(sig)) { seen.add(sig); cands.push({ placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) }); }
+    if (onProgress) onProgress(a+1, attempts);
+    await new Promise((r)=>setTimeout(r, 0)); // let the UI breathe between attempts
+  }
+  return rankCandidates(cands);
+}
+
 
 // ---------- Scoring ----------
 function scoreSchedule(placed, unplaced, teachers) {
@@ -1436,13 +1450,13 @@ export default function App() {
       : mode==="half" ? placed.filter((s)=> s.locked || !phaseVisible(s.phase, semView))
       : placed.filter((s)=>s.locked);
     const steps = ["gen1","gen2","gen3","gen4","gen5"]; let i=0; setGenStep(steps[0]);
-    const iv = setInterval(()=>{ i++; if (i<steps.length) setGenStep(steps[i]); }, 130);
-    setTimeout(()=>{ clearInterval(iv);
-      const cands = generateCandidates(courses, teachers, locks, 12, rules);
-      setCandidates(cands); setActiveCand(0);
-      setPlaced(clone(cands[0].placed)); setUnplaced(cands[0].unplaced);
+    const iv = setInterval(()=>{ i=(i+1)%steps.length; setGenStep(steps[i]); }, 200);
+    setTimeout(async ()=>{
+      const cands = await generateCandidatesAsync(courses, teachers, locks, 8, rules);
+      clearInterval(iv);
+      if (cands.length) { setCandidates(cands); setActiveCand(0); setPlaced(clone(cands[0].placed)); setUnplaced(cands[0].unplaced); }
       setGenerating(false); setSelected(null);
-    }, 720);
+    }, 60);
   }, [placed, courses, teachers, rules, semView]);
 
   // embedded sample schedule shows on load; Generate re-solves on demand
