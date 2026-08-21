@@ -103,6 +103,17 @@ const STR = {
   adminEmpty:{en:"No schedules found.",mn:"Хуваарь олдсонгүй."},
   unknownUser:{en:"(unknown user)",mn:"(тодорхойгүй)"},
   refresh:{en:"Refresh",mn:"Шинэчлэх"},
+  adminTabSchedules:{en:"Schedules",mn:"Хуваарь"},
+  adminTabUsers:{en:"Users",mn:"Хэрэглэгчид"},
+  adminUsersDesc:{en:"Everyone who has signed up. Make someone an admin so they can review all schedules and manage users — no need to copy IDs.",mn:"Бүртгүүлсэн бүх хэрэглэгч. Хэн нэгнийг админ болгосноор бүх хуваарийг харах, хэрэглэгч удирдах боломжтой — ID хуулах шаардлагагүй."},
+  adminUserSearch:{en:"Search users by email…",mn:"Имэйлээр хайх…"},
+  adminBadge:{en:"Admin",mn:"Админ"},
+  makeAdmin:{en:"Make admin",mn:"Админ болгох"},
+  removeAdmin:{en:"Remove admin",mn:"Админ болиулах"},
+  madeAdmin:{en:"Admin access granted",mn:"Админ эрх олгосон"},
+  removedAdmin:{en:"Admin access removed",mn:"Админ эрх хассан"},
+  joined:{en:"Joined",mn:"Элссэн"},
+  you:{en:"you",mn:"та"},
   capacityTitle:{en:"Group over capacity",mn:"Бүлгийн ачаалал хэтэрсэн"},
   repeatsTitle:{en:"Repeated session same day",mn:"Нэг өдөрт давхардсан хичээл"},
   repeatsDesc:{en:"Lecture + seminar or lecture + lab on the same day is fine — this lists only two of the SAME type (e.g. two seminars) for one group in one day, which is blocked during generation. Any shown here are locked/manually-placed: free a slot, split across instructors, or drag one to another day.",mn:"Лекц + семинар эсвэл лекц + лаб нэг өдөрт байж болно — энд зөвхөн ижил төрлийн хоёр хичээл (ж: хоёр семинар) нэг бүлэгт нэг өдөрт орсныг харуулна, үүнийг үүсгэх үед хориглоно. Эндхийн зүйлс түгжсэн/гараар байрлуулсан: цаг чөлөөлөх, багш хуваах, эсвэл өөр өдөрт чирнэ үү."},
@@ -1426,38 +1437,64 @@ function AuthModal({ lang, msg, onClose, onAuth }) {
     </div>
   );
 }
-function AdminModal({ lang, list, onClose, onLoad, onRefresh }) {
+function AdminModal({ lang, list, users, selfId, onClose, onLoad, onRefresh, onRefreshUsers, onSetAdmin }) {
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState("schedules");
   const badge = { draft:"#6b7280", checkpoint:"#16a34a", final:"#7c3aed" };
   const rows = (list||[]).filter((r)=>{ const s=(q||"").toLowerCase(); return !s || (r.owner_email||"").toLowerCase().includes(s) || (r.name||"").toLowerCase().includes(s); });
+  const urows = (users||[]).filter((r)=>{ const s=(q||"").toLowerCase(); return !s || (r.email||"").toLowerCase().includes(s); });
+  const TabBtn = ({ id, label }) => (
+    <button onClick={()=>{ setTab(id); setQ(""); if (id==="users") onRefreshUsers(); }} className="rounded-md px-2.5 py-1 text-[11px] font-medium" style={ tab===id ? { background:"#ffffff33" } : { background:"transparent", opacity:0.7 }}>{label}</button>
+  );
   return (
     <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:"#1a2438aa" }} onClick={onClose}>
       <div className="rounded-xl max-w-2xl w-full max-h-[85vh] overflow-auto" style={{ background:PAPER }} onClick={(e)=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 sticky top-0" style={{ background:"#4c1d95", color:PAPER }}>
-          <div className="flex items-center gap-2 font-semibold text-[14px]"><Gauge size={15}/> {tr(lang,"adminTitle")}</div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 font-semibold text-[14px]"><Gauge size={15}/> {tr(lang,"adminTitle")}</div>
+            <div className="flex items-center gap-1"><TabBtn id="schedules" label={tr(lang,"adminTabSchedules")}/><TabBtn id="users" label={tr(lang,"adminTabUsers")}/></div>
+          </div>
           <div className="flex items-center gap-2">
-            <button onClick={onRefresh} className="rounded-md px-2 py-1 text-[11px]" style={{ background:"#ffffff1a" }}>{tr(lang,"refresh")}</button>
+            <button onClick={tab==="users"?onRefreshUsers:onRefresh} className="rounded-md px-2 py-1 text-[11px]" style={{ background:"#ffffff1a" }}>{tr(lang,"refresh")}</button>
             <button onClick={onClose} className="rounded-md p-1" style={{ background:"#ffffff1a" }}><X size={16}/></button>
           </div>
         </div>
         <div className="p-5 space-y-3">
-          <p className="text-[11px] opacity-60">{tr(lang,"adminDesc")}</p>
-          <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={tr(lang,"adminSearch")} className="w-full rounded border px-2 py-1.5 text-[13px]" style={{ borderColor:LINE }} />
-          {rows.length===0 ? (
-            <div className="text-[12px] opacity-50 text-center py-6">{tr(lang,"adminEmpty")}</div>
-          ) : (
-            <div className="space-y-1.5">
-              {rows.map((row)=>(
-                <div key={row.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background:"#fff", border:`1px solid ${LINE}` }}>
-                  <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase" style={{ background:`${badge[row.status]||"#6b7280"}22`, color:badge[row.status]||"#6b7280" }}>{row.status}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium truncate">{row.owner_email || tr(lang,"unknownUser")}</div>
-                    <div className="text-[10px] opacity-50 truncate">{row.name} · {new Date(row.updated_at).toLocaleString()}</div>
+          <p className="text-[11px] opacity-60">{tab==="users" ? tr(lang,"adminUsersDesc") : tr(lang,"adminDesc")}</p>
+          <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={tab==="users"?tr(lang,"adminUserSearch"):tr(lang,"adminSearch")} className="w-full rounded border px-2 py-1.5 text-[13px]" style={{ borderColor:LINE }} />
+          {tab==="schedules" ? (
+            rows.length===0 ? <div className="text-[12px] opacity-50 text-center py-6">{tr(lang,"adminEmpty")}</div> : (
+              <div className="space-y-1.5">
+                {rows.map((row)=>(
+                  <div key={row.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background:"#fff", border:`1px solid ${LINE}` }}>
+                    <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase" style={{ background:`${badge[row.status]||"#6b7280"}22`, color:badge[row.status]||"#6b7280" }}>{row.status}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-medium truncate">{row.owner_email || tr(lang,"unknownUser")}</div>
+                      <div className="text-[10px] opacity-50 truncate">{row.name} · {new Date(row.updated_at).toLocaleString()}</div>
+                    </div>
+                    <button onClick={()=>onLoad(row.id)} className="rounded-md px-2.5 py-1 text-[12px] font-semibold shrink-0" style={{ background:INK, color:PAPER }}>{tr(lang,"loadBtn")}</button>
                   </div>
-                  <button onClick={()=>onLoad(row.id)} className="rounded-md px-2.5 py-1 text-[12px] font-semibold shrink-0" style={{ background:INK, color:PAPER }}>{tr(lang,"loadBtn")}</button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
+          ) : (
+            urows.length===0 ? <div className="text-[12px] opacity-50 text-center py-6">{tr(lang,"adminEmpty")}</div> : (
+              <div className="space-y-1.5">
+                {urows.map((u)=>(
+                  <div key={u.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background:"#fff", border:`1px solid ${LINE}` }}>
+                    {u.is_admin && <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase" style={{ background:"#7c3aed22", color:"#7c3aed" }}>{tr(lang,"adminBadge")}</span>}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-medium truncate">{u.email}{u.id===selfId && <span className="opacity-45 font-normal"> · {tr(lang,"you")}</span>}</div>
+                      <div className="text-[10px] opacity-50 truncate">{tr(lang,"joined")} {new Date(u.created_at).toLocaleDateString()}</div>
+                    </div>
+                    {u.id===selfId ? <span className="text-[11px] opacity-40 shrink-0">—</span> :
+                      u.is_admin
+                        ? <button onClick={()=>onSetAdmin(u.id, false)} className="rounded-md px-2.5 py-1 text-[12px] font-medium shrink-0" style={{ background:"#be123c15", color:"#be123c" }}>{tr(lang,"removeAdmin")}</button>
+                        : <button onClick={()=>onSetAdmin(u.id, true)} className="rounded-md px-2.5 py-1 text-[12px] font-semibold shrink-0" style={{ background:"#7c3aed", color:PAPER }}>{tr(lang,"makeAdmin")}</button>}
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
@@ -1548,6 +1585,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminList, setAdminList] = useState([]);
+  const [adminUsers, setAdminUsers] = useState([]);
   const [authMsg, setAuthMsg] = useState("");
   const t = useCallback((k)=>tr(lang,k), [lang]);
 
@@ -1636,6 +1674,14 @@ export default function App() {
     const { data, error } = await supabase.rpc("admin_schedules");
     if (!error) setAdminList(data||[]);
   }, [isAdmin]);
+  const refreshUsers = useCallback(async ()=>{ if (!supabase || !isAdmin) return;
+    const { data, error } = await supabase.rpc("admin_users");
+    if (!error) setAdminUsers(data||[]);
+  }, [isAdmin]);
+  const setAdminFor = useCallback(async (uuid, make)=>{ if (!supabase || !isAdmin) return;
+    const { error } = await supabase.rpc("set_admin", { target:uuid, make });
+    if (error) showToast("conflict", error.message); else { showToast("valid", make ? t("madeAdmin") : t("removedAdmin")); refreshUsers(); }
+  }, [isAdmin, refreshUsers, lang]);
   const doAuth = async (mode, email, password)=>{ if (!supabase) return; setAuthMsg("…");
     const fn = mode==="up" ? supabase.auth.signUp({ email, password }) : supabase.auth.signInWithPassword({ email, password });
     const { error } = await fn;
@@ -1737,7 +1783,7 @@ export default function App() {
             {supabase && (session ? (
               <>
               <button onClick={()=>{ setShowCloud(true); refreshCloud(); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#16a34a33" }} title={session.user.email}><History size={13}/> <span className="hidden lg:inline">{t("mySchedules")}</span></button>
-              {isAdmin && <button onClick={()=>{ setShowAdmin(true); refreshAdmin(); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#7c3aed44" }} title={t("adminHint")}><Gauge size={13}/> <span className="hidden lg:inline">{t("adminBtn")}</span></button>}
+              {isAdmin && <button onClick={()=>{ setShowAdmin(true); refreshAdmin(); refreshUsers(); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#7c3aed44" }} title={t("adminHint")}><Gauge size={13}/> <span className="hidden lg:inline">{t("adminBtn")}</span></button>}
               </>
             ) : (
               <button onClick={()=>{ setAuthMsg(""); setShowAuth(true); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><User size={13}/> <span className="hidden lg:inline">{t("signIn")}</span></button>
@@ -1793,7 +1839,7 @@ export default function App() {
           onClose={()=>setShowCloud(false)} onSave={cloudSave} onLoad={cloudLoad} onDelete={cloudDelete} onSignOut={signOut} />
       )}
       {showAdmin && isAdmin && (
-        <AdminModal lang={lang} list={adminList} onClose={()=>setShowAdmin(false)} onLoad={(id)=>{ cloudLoad(id); setShowAdmin(false); }} onRefresh={refreshAdmin} />
+        <AdminModal lang={lang} list={adminList} users={adminUsers} selfId={session?.user?.id} onClose={()=>setShowAdmin(false)} onLoad={(id)=>{ cloudLoad(id); setShowAdmin(false); }} onRefresh={refreshAdmin} onRefreshUsers={refreshUsers} onSetAdmin={setAdminFor} />
       )}
 
       {/* Rules panel */}
