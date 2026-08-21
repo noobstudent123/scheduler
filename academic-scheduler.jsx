@@ -95,6 +95,14 @@ const STR = {
   noVersions:{en:"No saved versions yet. Press Save to store the current schedule as a version you can return to.",mn:"Хадгалсан хувилбар алга. Одоогийн хуваарийг хувилбар болгон хадгалахын тулд Хадгалах дар."},
   renameVersion:{en:"Rename this version:",mn:"Хувилбарын нэрийг өөрчлөх:"},
   delete:{en:"Delete",mn:"Устгах"},
+  adminBtn:{en:"Admin",mn:"Админ"},
+  adminHint:{en:"Load any user's saved schedule to review or plan together",mn:"Аль ч хэрэглэгчийн хуваарийг ачаалж хамтран төлөвлөх"},
+  adminTitle:{en:"Admin — all users' schedules",mn:"Админ — бүх хэрэглэгчийн хуваарь"},
+  adminDesc:{en:"Load any user's saved version into your workspace to troubleshoot or plan with them. Your edits save under your own account, never overwriting theirs.",mn:"Аль ч хэрэглэгчийн хадгалсан хувилбарыг ачаалж, тэдэнтэй хамтран засварлана. Таны өөрчлөлт таны бүртгэлд хадгалагдана, тэднийхийг дарж бичихгүй."},
+  adminSearch:{en:"Search by email or name…",mn:"Имэйл, нэрээр хайх…"},
+  adminEmpty:{en:"No schedules found.",mn:"Хуваарь олдсонгүй."},
+  unknownUser:{en:"(unknown user)",mn:"(тодорхойгүй)"},
+  refresh:{en:"Refresh",mn:"Шинэчлэх"},
   signInSaveVersions:{en:"Sign in to save versions you can return to (across sessions and devices).",mn:"Хувилбар хадгалахын тулд нэвтэрнэ үү (сесс, төхөөрөмж хооронд)."},
   unplacedHint:{en:"No feasible slot with a free room + instructor. Unlock nearby classes or add a room/period.",mn:"Багш, өрөө сул зэрэгцэх цаг олдсонгүй. Ойролцоох хичээлийг тайлах эсвэл өрөө/цаг нэмнэ үү."},
   dragHint:{en:"Drag a class to an empty slot — hard conflicts are blocked live. Split cells alternate by week: top-left = odd, bottom-right = even. Hatched = Tuesday after 13:45.",mn:"Хичээлийг сул нүд рүү чирнэ үү — хатуу зөрчлийг шууд хориглоно. Хуваасан нүд долоо хоногоор ээлжилнэ: зүүн дээд = сондгой, баруун доод = тэгш. Судалтай = Мягмар 13:45-аас хойш."},
@@ -1357,6 +1365,44 @@ function AuthModal({ lang, msg, onClose, onAuth }) {
     </div>
   );
 }
+function AdminModal({ lang, list, onClose, onLoad, onRefresh }) {
+  const [q, setQ] = useState("");
+  const badge = { draft:"#6b7280", checkpoint:"#16a34a", final:"#7c3aed" };
+  const rows = (list||[]).filter((r)=>{ const s=(q||"").toLowerCase(); return !s || (r.owner_email||"").toLowerCase().includes(s) || (r.name||"").toLowerCase().includes(s); });
+  return (
+    <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:"#1a2438aa" }} onClick={onClose}>
+      <div className="rounded-xl max-w-2xl w-full max-h-[85vh] overflow-auto" style={{ background:PAPER }} onClick={(e)=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 sticky top-0" style={{ background:"#4c1d95", color:PAPER }}>
+          <div className="flex items-center gap-2 font-semibold text-[14px]"><Gauge size={15}/> {tr(lang,"adminTitle")}</div>
+          <div className="flex items-center gap-2">
+            <button onClick={onRefresh} className="rounded-md px-2 py-1 text-[11px]" style={{ background:"#ffffff1a" }}>{tr(lang,"refresh")}</button>
+            <button onClick={onClose} className="rounded-md p-1" style={{ background:"#ffffff1a" }}><X size={16}/></button>
+          </div>
+        </div>
+        <div className="p-5 space-y-3">
+          <p className="text-[11px] opacity-60">{tr(lang,"adminDesc")}</p>
+          <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={tr(lang,"adminSearch")} className="w-full rounded border px-2 py-1.5 text-[13px]" style={{ borderColor:LINE }} />
+          {rows.length===0 ? (
+            <div className="text-[12px] opacity-50 text-center py-6">{tr(lang,"adminEmpty")}</div>
+          ) : (
+            <div className="space-y-1.5">
+              {rows.map((row)=>(
+                <div key={row.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background:"#fff", border:`1px solid ${LINE}` }}>
+                  <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase" style={{ background:`${badge[row.status]||"#6b7280"}22`, color:badge[row.status]||"#6b7280" }}>{row.status}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium truncate">{row.owner_email || tr(lang,"unknownUser")}</div>
+                    <div className="text-[10px] opacity-50 truncate">{row.name} · {new Date(row.updated_at).toLocaleString()}</div>
+                  </div>
+                  <button onClick={()=>onLoad(row.id)} className="rounded-md px-2.5 py-1 text-[12px] font-semibold shrink-0" style={{ background:INK, color:PAPER }}>{tr(lang,"loadBtn")}</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 function CloudModal({ lang, email, list, termStart, onClose, onSave, onLoad, onDelete, onSignOut }) {
   const [name, setName] = useState("");
   const [status, setStatus] = useState("checkpoint");
@@ -1438,6 +1484,9 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const [cloudList, setCloudList] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminList, setAdminList] = useState([]);
   const [authMsg, setAuthMsg] = useState("");
   const t = useCallback((k)=>tr(lang,k), [lang]);
 
@@ -1504,6 +1553,17 @@ export default function App() {
     if (!error) setCloudList(data||[]);
   }, [session]);
   useEffect(()=>{ if (session) refreshCloud(); else setCloudList([]); }, [session, refreshCloud]);
+  // admin detection: a row in the `admins` table (visible to you via its own RLS policy) means you're an admin
+  useEffect(()=>{ let alive=true;
+    if (!supabase || !session) { setIsAdmin(false); return; }
+    supabase.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle()
+      .then(({ data })=>{ if (alive) setIsAdmin(!!data); }).catch(()=>{});
+    return ()=>{ alive=false; };
+  }, [session]);
+  const refreshAdmin = useCallback(async ()=>{ if (!supabase || !isAdmin) return;
+    const { data, error } = await supabase.rpc("admin_schedules");
+    if (!error) setAdminList(data||[]);
+  }, [isAdmin]);
   const doAuth = async (mode, email, password)=>{ if (!supabase) return; setAuthMsg("…");
     const fn = mode==="up" ? supabase.auth.signUp({ email, password }) : supabase.auth.signInWithPassword({ email, password });
     const { error } = await fn;
@@ -1603,7 +1663,10 @@ export default function App() {
             <button onClick={handleSave} title={session?t("saveToCloud"):t("saveVersion")} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background: session ? "#16a34a33" : "#ffffff1a" }}><Save size={13}/> <span className="hidden lg:inline">{t("save")}</span></button>
             <button onClick={()=>setShowRules(true)} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><Layers size={13}/> <span className="hidden lg:inline">{t("rulesBtn")}</span></button>
             {supabase && (session ? (
+              <>
               <button onClick={()=>{ setShowCloud(true); refreshCloud(); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#16a34a33" }} title={session.user.email}><History size={13}/> <span className="hidden lg:inline">{t("mySchedules")}</span></button>
+              {isAdmin && <button onClick={()=>{ setShowAdmin(true); refreshAdmin(); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#7c3aed44" }} title={t("adminHint")}><Gauge size={13}/> <span className="hidden lg:inline">{t("adminBtn")}</span></button>}
+              </>
             ) : (
               <button onClick={()=>{ setAuthMsg(""); setShowAuth(true); }} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><User size={13}/> <span className="hidden lg:inline">{t("signIn")}</span></button>
             ))}
@@ -1656,6 +1719,9 @@ export default function App() {
       {showCloud && session && (
         <CloudModal lang={lang} email={session.user.email} list={cloudList} termStart={termStart}
           onClose={()=>setShowCloud(false)} onSave={cloudSave} onLoad={cloudLoad} onDelete={cloudDelete} onSignOut={signOut} />
+      )}
+      {showAdmin && isAdmin && (
+        <AdminModal lang={lang} list={adminList} onClose={()=>setShowAdmin(false)} onLoad={(id)=>{ cloudLoad(id); setShowAdmin(false); }} onRefresh={refreshAdmin} />
       )}
 
       {/* Rules panel */}
