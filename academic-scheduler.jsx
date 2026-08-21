@@ -1130,7 +1130,7 @@ function CourseEditor({ lang, courses, setCourses, teachers, setTeachers, termSt
   }));
   const add = () => setCourses((prev)=>{ const nx = Math.max(0,...prev.map((c)=>c.idx))+1;
     return [...prev, cc(nx, ["1A"], teachers[0].id, "full", { lec:1, sem:1 })]; });
-  const addT = () => setTeachers((prev)=>{ const n = prev.length+1; return [...prev, mkTeacher(n)]; });
+  const addT = () => setTeachers((prev)=>{ const maxN = prev.reduce((m,x)=>{ const k = parseInt(String(x.id).replace(/\D/g,"")) || 0; return k>m?k:m; }, 0); return [...prev, mkTeacher(maxN+1)]; });
   const derivedText = (c) => deriveComponents(c).map((x)=> `${compTag(lang,x.type)}·${x.freq==="biweekly"?tr(lang,"biweekly"):tr(lang,"weekly")}`).join(", ") || "—";
   const numCell = (c, field) => (
     <input type="number" min="0" step="0.5" value={c[field]} onChange={(e)=>upd(c.idx, field, parseFloat(e.target.value)||0)}
