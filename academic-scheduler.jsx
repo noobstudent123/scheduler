@@ -65,7 +65,7 @@ const STR = {
   colorByHint:{en:"Colour cards by cohort or by class type (lecture / seminar / lab / bonus)",mn:"Картыг бүлгээр эсвэл хичээлийн төрлөөр (лекц / семинар / лаб / нэмэлт) өнгөөр ялгах"},
   alreadyBooked:{en:"already has a class at that time",mn:"тэр цагт аль хэдийн хичээлтэй"},
   noRoomFree:{en:"no free room fits here",mn:"тохирох чөлөөт өрөө алга"},
-  tueBlocked:{en:"No classes after 13:45 on Tuesday",mn:"Мягмар гарагт 13:45-аас хойш хичээл байхгүй"},
+  tueBlocked:{en:"Tuesday after 13:45 — usually kept free (allowed if you need it)",mn:"Мягмар 13:45-аас хойш — ихэвчлэн чөлөөтэй (шаардлагатай бол болно)"},
   isOffOn:{en:"is off on",mn:"амралттай —"},
   lockHalf:{en:"Lock",mn:"Түгжих"},
   unlockHalf:{en:"Unlock",mn:"Тайлах"},
@@ -107,10 +107,10 @@ const STR = {
   repeatsTitle:{en:"Repeated session same day",mn:"Нэг өдөрт давхардсан хичээл"},
   repeatsDesc:{en:"Lecture + seminar or lecture + lab on the same day is fine — this lists only two of the SAME type (e.g. two seminars) for one group in one day, which is blocked during generation. Any shown here are locked/manually-placed: free a slot, split across instructors, or drag one to another day.",mn:"Лекц + семинар эсвэл лекц + лаб нэг өдөрт байж болно — энд зөвхөн ижил төрлийн хоёр хичээл (ж: хоёр семинар) нэг бүлэгт нэг өдөрт орсныг харуулна, үүнийг үүсгэх үед хориглоно. Эндхийн зүйлс түгжсэн/гараар байрлуулсан: цаг чөлөөлөх, багш хуваах, эсвэл өөр өдөрт чирнэ үү."},
   sameTypeDay:{en:"Two of the same session type for this group on one day",mn:"Энэ бүлэгт нэг өдөрт ижил төрлийн хоёр хичээл"},
-  capacityDesc:{en:"These groups are at or over the weekly limit ({n} class slots per half — Tue afternoons are blocked). When a group is this full, some classes double up on a day or stay unplaced. Reduce the group's load or free Tuesday P4.",mn:"Эдгээр бүлэг долоо хоногийн хязгаарт хүрсэн эсвэл хэтэрсэн (хагас бүрт {n} цаг; Мягмар үдээс хойш хаалттай). Ийм дүүрэн үед зарим хичээл нэг өдөр давхцах эсвэл байрлахгүй. Ачааллыг бууруулах эсвэл Мягмар P4-г нээнэ үү."},
+  capacityDesc:{en:"These groups are at or over the weekly limit ({n} class slots per half). When a group is this full, some classes stay unplaced or must use discouraged slots (P4 / Tuesday afternoon). Reduce the group's load or split it across instructors.",mn:"Эдгээр бүлэг долоо хоногийн хязгаарт хүрсэн эсвэл хэтэрсэн (хагас бүрт {n} цаг). Ийм дүүрэн үед зарим хичээл байрлахгүй эсвэл тохиромжгүй цаг (P4 / Мягмар үдээс хойш) ашиглана. Ачааллыг бууруулах эсвэл багш хуваана уу."},
   signInSaveVersions:{en:"Sign in to save versions you can return to (across sessions and devices).",mn:"Хувилбар хадгалахын тулд нэвтэрнэ үү (сесс, төхөөрөмж хооронд)."},
   unplacedHint:{en:"No feasible slot with a free room + instructor. Unlock nearby classes or add a room/period.",mn:"Багш, өрөө сул зэрэгцэх цаг олдсонгүй. Ойролцоох хичээлийг тайлах эсвэл өрөө/цаг нэмнэ үү."},
-  dragHint:{en:"Drag a class to an empty slot — hard conflicts are blocked live. Split cells alternate by week: top-left = odd, bottom-right = even. Hatched = Tuesday after 13:45.",mn:"Хичээлийг сул нүд рүү чирнэ үү — хатуу зөрчлийг шууд хориглоно. Хуваасан нүд долоо хоногоор ээлжилнэ: зүүн дээд = сондгой, баруун доод = тэгш. Судалтай = Мягмар 13:45-аас хойш."},
+  dragHint:{en:"Drag a class to an empty slot — hard conflicts are blocked live; late/Tuesday-afternoon slots warn but are allowed. Split cells alternate by week: top-left = odd, bottom-right = even.",mn:"Хичээлийг сул нүд рүү чирнэ үү — хатуу зөрчлийг шууд хориглоно; оройн/Мягмар үдээс хойшхи нүд сануулна ч болно. Хуваасан нүд долоо хоногоор ээлжилнэ: зүүн дээд = сондгой, баруун доод = тэгш."},
   importWhat:{en:"This is what the app parsed from your Excel import. Resolve any flags below before trusting the generated schedule.",mn:"Энэ бол Excel-ээс уншсан мэдээлэл. Хуваарийг найдахаас өмнө доорх анхааруулгыг шийднэ үү."},
   cohortsN:{en:"cohorts",mn:"бүлэг"},
   coursesN:{en:"courses",mn:"хичээл"},
@@ -476,7 +476,6 @@ function occFactory(placed) {
   return { get, mark };
 }
 function feasible(s, d, p, cp, get, seq, offMap) {
-  if (d === "tue" && p >= TUE_CUTOFF_PERIOD) return false;
   if (offMap[s.ins] === d) return false;
   const pars = cp === "weekly" ? ["odd","even"] : [cp];
   for (const ph of PHASES_OF[s.phase]) for (const pa of pars) {
@@ -630,6 +629,7 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
   const placeCost = (s,d,p,pa) => {
     let c = 0;
     if (rules.compactDay) { if (p === 4) c += 60; else if (p === 3) c += 1; }
+    if (d === "tue" && p >= TUE_CUTOFF_PERIOD) c += 200; // Tuesday afternoon: strongly avoided, but allowed if needed
     if (rules.teacherPrefDay && prefMap[s.ins] === d) c -= 3;
     if (rules.teacherAvoid && ((avoidMap[s.ins] && avoidMap[s.ins].has(`${d}|${p}`)) || (avoidPer[s.ins] && avoidPer[s.ins].has(p)))) c += 40;
     if (rules.minGaps) for (const co of s.cohorts) for (const h of PHASES_OF[s.phase]) {
@@ -674,7 +674,6 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     const opts = []; const pars = s.freq==="weekly" ? ["weekly"] : ["odd","even"];
     for (const day of dayOrder) for (const per of PERIODS) for (const pa of pars) {
       if (!ALLOWP4 && per.id === 4) continue;
-      if (day.id === "tue" && per.id >= TUE_CUTOFF_PERIOD) continue;
       if (offMap[s.ins] === day.id) continue;
       if (!seqOK(s, day.id, per.id)) continue;
       if (rules.minGaps && !contiguousOK(s, day.id, per.id)) continue;
@@ -724,7 +723,6 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
           if (day.id===s.day || offMap[s.ins]===day.id) continue;
           if (finalPlaced.some((x)=>x!==s && x.courseIdx===s.courseIdx && x.type===s.type && x.day===day.id && x.cohorts.some((co)=>s.cohorts.includes(co)))) continue;
           for (const per of PERIODS) {
-            if (day.id==="tue" && per.id>=TUE_CUTOFF_PERIOD) continue;
             if (!seqOK(s, day.id, per.id)) continue;
             if (rules.minGaps && !contigOK(s, day.id, per.id, s)) continue;
             if (!rocc.canPlace(s, day.id, per.id, s.parity)) continue;
@@ -780,7 +778,7 @@ async function generateCandidatesAsync(courses, teachers, locked, attempts, rule
 
 // ---------- Capacity check (over-subscription) ----------
 // Available student slots per half: Tue P1–P3 (3) + Wed/Thu/Fri/Mon P1–P4 (16) = 19
-const SLOTS_PER_HALF = DAYS.length*PERIODS.length - (PERIODS.length - (TUE_CUTOFF_PERIOD-1));
+const SLOTS_PER_HALF = DAYS.length*PERIODS.length; // all weekly slots usable; Tuesday P4 is discouraged, not blocked
 function cohortLoad(courses) {
   const load = {}; COHORTS.forEach((c)=>load[c.id]={ h1:0, h2:0 });
   for (const s of expandSessions(courses)) {
@@ -863,7 +861,7 @@ function validateMove(session, d, p, placed, lang, teachers, half) {
   const cp = session.parity; const pars = cp === "weekly" ? ["odd","even"] : [cp];
   const phases = half ? [half] : PHASES_OF[session.phase]; // only check the half being edited
   const dName = dayLabel(lang, DAYS.find((x)=>x.id===d));
-  if (d==="tue" && p>=TUE_CUTOFF_PERIOD) reasons.push({level:"conflict", text:tr(lang,"tueBlocked")});
+  if (d==="tue" && p>=TUE_CUTOFF_PERIOD) reasons.push({level:"warning", text:tr(lang,"tueBlocked")});
   if (offMap[session.ins]===d) reasons.push({level:"conflict", text:`${teacherName(teachers,session.ins)} ${tr(lang,"isOffOn")} ${dName}`});
   let insHit=false, cohHit=false;
   for (const ph of phases) for (const pa of pars) { const cell = get(d,p,ph,pa);
@@ -1883,7 +1881,7 @@ export default function App() {
                                 if (ss.length) { const idset = ss.map((x)=>x.id).sort().join(",");
                                   while (i+span < COHORTS.length) { const nid = COHORTS[i+span].id; const ns = cellSessions(d.id, p.id, nid);
                                     if (ns.map((x)=>x.id).sort().join(",")===idset && ss.every((x)=>x.cohorts.includes(nid))) span++; else break; } }
-                                const blocked = d.id==="tue" && p.id>=TUE_CUTOFF_PERIOD;
+                                const blocked = false;
                                 const hatched = blocked || rowEmpty; // gray out blocked slots AND fully-empty period rows
                                 out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5" style={{ borderBottom: lastRow ? `3px solid ${THICK}` : `1px solid ${LINE}`, borderLeft: yearStart ? `3px solid ${THICK}` : `1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
                                 i += span;
@@ -1895,7 +1893,7 @@ export default function App() {
                       : PERIODS.map((p)=>(
                           <tr key={p.id}>
                             <td className="sticky left-0 z-10 px-2 py-2 align-top" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom:`1px solid ${LINE}`, width:74 }}><div className="text-[11px] font-semibold">P{p.id}</div><div className="text-[10px] opacity-50 whitespace-nowrap">{p.label}</div></td>
-                            {DAYS.map((d)=>{ const ss = cellSessions(d.id, p.id, null); const blocked = d.id==="tue" && p.id>=TUE_CUTOFF_PERIOD;
+                            {DAYS.map((d)=>{ const ss = cellSessions(d.id, p.id, null); const blocked = false;
                               return (<td key={d.id} {...dropProps(d.id,p.id)} className="align-top px-1.5 py-1.5" style={{ borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: blocked ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth:158 }}><CellContent list={ss} {...cellHandlers}/></td>);
                             })}
                           </tr>
