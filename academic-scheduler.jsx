@@ -587,17 +587,17 @@ const RULES_HARD = [
   { en:"No student group is in two places at once", mn:"Нэг бүлэг зэрэг хоёр газар байхгүй" },
   { en:"No instructor is in two places at once", mn:"Нэг багш зэрэг хоёр газар байхгүй" },
   { en:"No room is double-booked", mn:"Нэг өрөө давхардахгүй" },
+  { en:"A class never exceeds its room's capacity", mn:"Хичээл өрөөний багтаамжаас хэтрэхгүй" },
   { en:"Lecture is before its seminar and lab; seminar is before bonus seminar", mn:"Лекц нь семинар, лабораториос өмнө; семинар нь нэмэлт семинараас өмнө" },
-  { en:"No student class after 13:45 on Tuesday", mn:"Мягмар гарагт 13:45-аас хойш хичээл байхгүй" },
-  { en:"Room capacity must fit the group", mn:"Өрөөний багтаамж бүлэгт тохирно" },
-  { en:"Small single groups (3rd/4th year) keep lectures in their own room; halls only when a group is too big", mn:"Цөөн бүлэг (3,4-р курс) лекцээ өөрийн өрөөнд; том танхим зөвхөн шаардлагатай үед" },
   { en:"An instructor's fixed day-off is respected", mn:"Багшийн амрах өдрийг баримтална" },
+  { en:"Parallel sections book both instructors and both rooms together", mn:"Зэрэгцээ хичээл хоёр багш, хоёр өрөөг зэрэг захиална" },
+  { en:"Small single groups (3rd/4th year) keep lectures in their own room; halls only when a group is too big", mn:"Цөөн бүлэг (3,4-р курс) лекцээ өөрийн өрөөнд; том танхим зөвхөн шаардлагатай үед" },
 ];
 const RULES_SOFT = [
-  { id:"compactDay", en:"Keep each day compact (avoid the 13:50 late period)", mn:"Өдрийг нягт байлгах (13:50-ийн цагаас зайлсхийх)" },
-  { id:"minGaps", en:"Minimise gaps in a group's day", mn:"Бүлгийн өдрийн цонхыг багасгах" },
+  { id:"compactDay", en:"Keep each day compact — avoid the 13:50 late period and Tuesday afternoon", mn:"Өдрийг нягт байлгах — 13:50-ийн оройн цаг ба Мягмар үдээс хойшхоос зайлсхийх" },
+  { id:"minGaps", en:"No mid-day gaps — keep each group's day a single unbroken block (strict when on)", mn:"Өдрийн дунд цонхгүй — бүлгийн өдрийг тасралтгүй байлгах (асаалттай үед хатуу)" },
   { id:"balanceStudent", en:"Balance a group's classes evenly across the week (e.g. 2·2·2·2·2, not 3·3·3·1·0)", mn:"Бүлгийн хичээлийг долоо хоногт жигд хуваарилах (ж: 2·2·2·2·2, 3·3·3·1·0 биш)" },
-  { id:"noSameCourseDay", en:"Avoid the same course twice in one day for a group (reduces fatigue)", mn:"Нэг бүлэгт нэг хичээлийг өдөрт хоёр удаа давтахгүй байх (ачаалал бууруулна)" },
+  { id:"noSameCourseDay", en:"No two of the same session type in a day — e.g. two seminars of a course; lecture+seminar and lecture+lab stay allowed (strict when on)", mn:"Нэг өдөрт ижил төрлийн хоёр хичээл байхгүй — ж: нэг хичээлийн хоёр семинар; лекц+семинар, лекц+лаб зөвшөөрөгдөнө (асаалттай үед хатуу)" },
   { id:"biweeklyEdge", en:"Put biweekly classes at the start or end of the day", mn:"2 долоо хоног тутмын хичээлийг өдрийн эхэнд/төгсгөлд" },
   { id:"teacherPrefDay", en:"Respect an instructor's preferred day", mn:"Багшийн дуртай өдрийг харгалзах" },
   { id:"teacherAvoid", en:"Honour instructor time requests — a period they'd rather not teach (e.g. no 1st period for school pickup)", mn:"Багшийн цагийн хүсэлтийг харгалзах — заахыг хүсэхгүй цаг (ж: хүүхэд авах тул 1-р цаггүй)" },
@@ -639,8 +639,7 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     return true; };
   const placeCost = (s,d,p,pa) => {
     let c = 0;
-    if (rules.compactDay) { if (p === 4) c += 60; else if (p === 3) c += 1; }
-    if (d === "tue" && p >= TUE_CUTOFF_PERIOD) c += 200; // Tuesday afternoon: strongly avoided, but allowed if needed
+    if (rules.compactDay) { if (p === 4) c += 60; else if (p === 3) c += 1; if (d === "tue" && p >= TUE_CUTOFF_PERIOD) c += 200; } // avoid late period + Tuesday afternoon (allowed, strongly discouraged)
     if (rules.teacherPrefDay && prefMap[s.ins] === d) c -= 3;
     if (rules.teacherAvoid && ((avoidMap[s.ins] && avoidMap[s.ins].has(`${d}|${p}`)) || (avoidPer[s.ins] && avoidPer[s.ins].has(p)))) c += 40;
     if (rules.minGaps) for (const co of s.cohorts) for (const h of PHASES_OF[s.phase]) {
