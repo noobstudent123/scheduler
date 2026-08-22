@@ -2042,7 +2042,7 @@ export default function App() {
                                     if (ns.map((x)=>x.id).sort().join(",")===idset && ss.every((x)=>x.cohorts.includes(nid))) span++; else break; } }
                                 const blocked = false;
                                 const hatched = blocked || rowEmpty; // gray out blocked slots AND fully-empty period rows
-                                out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5 h-full" style={{ borderBottom: lastRow ? `3px solid ${THICK}` : `1px solid ${LINE}`, borderLeft: yearStart ? `3px solid ${THICK}` : `1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
+                                out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5" style={{ height:"46px", borderBottom: lastRow ? `3px solid ${THICK}` : `1px solid ${LINE}`, borderLeft: yearStart ? `3px solid ${THICK}` : `1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
                                 i += span;
                               }
                               return out;
@@ -2053,7 +2053,7 @@ export default function App() {
                           <tr key={p.id}>
                             <td className="sticky left-0 z-10 px-2 py-2 align-top" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom:`1px solid ${LINE}`, width:74 }}><div className="text-[11px] font-semibold">P{p.id}</div><div className="text-[10px] opacity-50 whitespace-nowrap">{p.label}</div></td>
                             {DAYS.map((d)=>{ const ss = cellSessions(d.id, p.id, null); const blocked = false;
-                              return (<td key={d.id} {...dropProps(d.id,p.id)} className="align-top px-1.5 py-1.5 h-full" style={{ borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: blocked ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth:158 }}><CellContent list={ss} {...cellHandlers}/></td>);
+                              return (<td key={d.id} {...dropProps(d.id,p.id)} className="align-top px-1.5 py-1.5" style={{ height:"46px", borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: blocked ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth:158 }}><CellContent list={ss} {...cellHandlers}/></td>);
                             })}
                           </tr>
                         ))}
