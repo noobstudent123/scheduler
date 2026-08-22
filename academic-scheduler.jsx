@@ -2,6 +2,9 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import * as XLSX from "xlsx";
 import { createClient } from "@supabase/supabase-js";
 
+// Build stamp — injected at build time via esbuild --define:__BUILD__; falls back to "dev" locally.
+const BUILD_ID = (typeof __BUILD__ !== "undefined") ? __BUILD__ : "dev";
+
 // ---- Supabase (cloud login + saved schedules) ----
 const SUPABASE_URL = "https://afnnrpavqsdamzzkxxcn.supabase.co";
 const SUPABASE_KEY = "sb_publishable_aWXZo9kOzMRA5P4J85prBQ_da0jNcVX";
@@ -26,6 +29,7 @@ import {
 const STR = {
   title:{en:"Schedule Optimizer",mn:"Хуваарь зохицуулагч"},
   subtitle:{en:"Accounting · Fall 2026–2027",mn:"Нягтлан бодох бүртгэл · Намрын улирал 2026–2027"},
+  buildNote:{en:"Build timestamp — after deploying, hard-refresh and check this changed",mn:"Хувилбарын огноо — байршуулсны дараа шинэчилж, энэ өөрчлөгдсөнийг шалгана уу"},
   quality:{en:"Quality",mn:"Чанар"},
   generate:{en:"Generate",mn:"Хуваарь гаргах"},
   regenerate:{en:"Regenerate",mn:"Дахин гаргах"},
@@ -1838,7 +1842,7 @@ export default function App() {
         <div className="px-5 py-3 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2.5">
             <div className="grid place-items-center rounded-md" style={{ width:34, height:34, background:"#f7f6f2", color:INK }}><Calendar size={19} strokeWidth={2.2}/></div>
-            <div><div className="font-bold text-[15px] tracking-tight">{t("title")}</div><div className="text-[11px] opacity-60">Мандах Их Сургууль · {t("subtitle")}</div></div>
+            <div><div className="font-bold text-[15px] tracking-tight">{t("title")}</div><div className="text-[11px] opacity-60">Мандах Их Сургууль · {t("subtitle")} <span className="opacity-70" title={t("buildNote")}>· build {BUILD_ID}</span></div></div>
           </div>
           <div className="flex-1"/>
           <div className="flex items-center rounded-md overflow-hidden text-[12px] font-semibold" style={{ border:"1px solid #ffffff33" }}>
