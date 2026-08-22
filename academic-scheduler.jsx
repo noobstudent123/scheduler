@@ -1153,9 +1153,9 @@ function CellContent({ list, view, colorBy, lang, courses, teachers, onCard, onL
   const oddColor = odd[0] ? cardColor(odd[0], colorBy) : LINE;
   const evenColor = even[0] ? cardColor(even[0], colorBy) : LINE;
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 h-full">
       {weekly.map(full)}
-      <div className="relative rounded-md overflow-hidden" style={{ minHeight:80, border:`1px solid ${LINE}` }}>
+      <div className="relative rounded-md overflow-hidden flex-1" style={{ minHeight:80, border:`1px solid ${LINE}` }}>
         {odd.length>0 && <div className="absolute inset-0" style={{ clipPath:"polygon(0 0,100% 0,0 100%)", background:`${oddColor}14` }}/>}
         {even.length>0 && <div className="absolute inset-0" style={{ clipPath:"polygon(100% 0,100% 100%,0 100%)", background:`${evenColor}14` }}/>}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none" viewBox="0 0 100 100">
@@ -2038,7 +2038,7 @@ export default function App() {
                                     if (ns.map((x)=>x.id).sort().join(",")===idset && ss.every((x)=>x.cohorts.includes(nid))) span++; else break; } }
                                 const blocked = false;
                                 const hatched = blocked || rowEmpty; // gray out blocked slots AND fully-empty period rows
-                                out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5" style={{ borderBottom: lastRow ? `3px solid ${THICK}` : `1px solid ${LINE}`, borderLeft: yearStart ? `3px solid ${THICK}` : `1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
+                                out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5 h-full" style={{ borderBottom: lastRow ? `3px solid ${THICK}` : `1px solid ${LINE}`, borderLeft: yearStart ? `3px solid ${THICK}` : `1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
                                 i += span;
                               }
                               return out;
@@ -2049,7 +2049,7 @@ export default function App() {
                           <tr key={p.id}>
                             <td className="sticky left-0 z-10 px-2 py-2 align-top" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom:`1px solid ${LINE}`, width:74 }}><div className="text-[11px] font-semibold">P{p.id}</div><div className="text-[10px] opacity-50 whitespace-nowrap">{p.label}</div></td>
                             {DAYS.map((d)=>{ const ss = cellSessions(d.id, p.id, null); const blocked = false;
-                              return (<td key={d.id} {...dropProps(d.id,p.id)} className="align-top px-1.5 py-1.5" style={{ borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: blocked ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth:158 }}><CellContent list={ss} {...cellHandlers}/></td>);
+                              return (<td key={d.id} {...dropProps(d.id,p.id)} className="align-top px-1.5 py-1.5 h-full" style={{ borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: blocked ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth:158 }}><CellContent list={ss} {...cellHandlers}/></td>);
                             })}
                           </tr>
                         ))}
