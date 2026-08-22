@@ -31,6 +31,20 @@ const STR = {
   regenerate:{en:"Regenerate",mn:"Дахин гаргах"},
   saveVersion:{en:"Save",mn:"Хадгалах"},
   save:{en:"Save",mn:"Хадгалах"},
+  unsavedChanges:{en:"Unsaved changes — click to save a version",mn:"Хадгалаагүй өөрчлөлт — хувилбар хадгалахын тулд дарна уу"},
+  saveVersionTitle:{en:"Save a version",mn:"Хувилбар хадгалах"},
+  versionName:{en:"Name this version",mn:"Хувилбарын нэр"},
+  versionNamePh:{en:"e.g. Fall draft, ready for review",mn:"ж: Намрын ноорог, хянахад бэлэн"},
+  versionStatus:{en:"Status",mn:"Төлөв"},
+  stInProgress:{en:"In progress",mn:"Хийгдэж байгаа"},
+  stFinished:{en:"Finished",mn:"Дууссан"},
+  saveVersionBtn:{en:"Save version",mn:"Хувилбар хадгалах"},
+  saveOwnerNote:{en:"Saved by {email}",mn:"Хадгалсан: {email}"},
+  restoreTitle:{en:"Unsaved changes found",mn:"Хадгалаагүй өөрчлөлт олдлоо"},
+  restoreFrom:{en:"From",mn:"Огноо:"},
+  restoreBtn:{en:"Restore",mn:"Сэргээх"},
+  discardBtn:{en:"Discard",mn:"Устгах"},
+  restored:{en:"Unsaved changes restored",mn:"Хадгалаагүй өөрчлөлт сэргээгдлээ"},
   timetable:{en:"Timetable",mn:"Хуваарь"},
   courseData:{en:"Course data",mn:"Хичээлийн мэдээлэл"},
   master:{en:"Master",mn:"Ерөнхий"},
@@ -116,6 +130,11 @@ const STR = {
   you:{en:"you",mn:"та"},
   capacityTitle:{en:"Group over capacity",mn:"Бүлгийн ачаалал хэтэрсэн"},
   repeatsTitle:{en:"Repeated session same day",mn:"Нэг өдөрт давхардсан хичээл"},
+  conflictsTitle:{en:"Scheduling conflicts",mn:"Хуваарийн зөрчил"},
+  conflictsDesc:{en:"Two classes share the same slot in the same week — a real clash. New schedules never create these; any shown came from an older saved version or a manual move. Regenerate, or drag one class to a free slot.",mn:"Хоёр хичээл нэг долоо хоногт нэг цагт давхцаж байна — жинхэнэ зөрчил. Шинэ хуваарь эдгээрийг үүсгэхгүй; эндхийн зүйлс хуучин хадгалалт эсвэл гараар зөөсөнөөс болсон. Дахин үүсгэх, эсвэл нэг хичээлийг чөлөөт цаг руу чирнэ үү."},
+  cf_group:{en:"same group",mn:"нэг бүлэг"},
+  cf_instructor:{en:"same instructor",mn:"нэг багш"},
+  cf_room:{en:"same room",mn:"нэг өрөө"},
   repeatsDesc:{en:"Lecture + seminar or lecture + lab on the same day is fine — this lists only two of the SAME type (e.g. two seminars) for one group in one day, which is blocked during generation. Any shown here are locked/manually-placed: free a slot, split across instructors, or drag one to another day.",mn:"Лекц + семинар эсвэл лекц + лаб нэг өдөрт байж болно — энд зөвхөн ижил төрлийн хоёр хичээл (ж: хоёр семинар) нэг бүлэгт нэг өдөрт орсныг харуулна, үүнийг үүсгэх үед хориглоно. Эндхийн зүйлс түгжсэн/гараар байрлуулсан: цаг чөлөөлөх, багш хуваах, эсвэл өөр өдөрт чирнэ үү."},
   sameTypeDay:{en:"Two of the same session type for this group on one day",mn:"Энэ бүлэгт нэг өдөрт ижил төрлийн хоёр хичээл"},
   capacityDesc:{en:"These groups are at or over the weekly limit ({n} class slots per half). When a group is this full, some classes stay unplaced or must use discouraged slots (P4 / Tuesday afternoon). Reduce the group's load or split it across instructors.",mn:"Эдгээр бүлэг долоо хоногийн хязгаарт хүрсэн эсвэл хэтэрсэн (хагас бүрт {n} цаг). Ийм дүүрэн үед зарим хичээл байрлахгүй эсвэл тохиромжгүй цаг (P4 / Мягмар үдээс хойш) ашиглана. Ачааллыг бууруулах эсвэл багш хуваана уу."},
@@ -148,8 +167,9 @@ const STR = {
   saveToCloud:{en:"Save to cloud",mn:"Үүлэнд хадгалах"},
   scheduleName:{en:"Schedule name",mn:"Хуваарийн нэр"},
   statusDraft:{en:"Draft",mn:"Ноорог"},
-  statusCheckpoint:{en:"Checkpoint",mn:"Хадгалалт"},
-  statusFinal:{en:"Final",mn:"Эцсийн"},
+  statusCheckpoint:{en:"In progress",mn:"Хийгдэж байгаа"},
+  statusFinal:{en:"Finished",mn:"Дууссан"},
+  statusAutosave:{en:"Auto-saved",mn:"Авто-хадгалсан"},
   loadBtn:{en:"Load",mn:"Ачаалах"},
   noSaved:{en:"No saved schedules yet.",mn:"Хадгалсан хуваарь алга."},
   cloudSaved:{en:"Saved to cloud",mn:"Үүлэнд хадгалагдлаа"},
@@ -798,6 +818,27 @@ function cohortLoad(courses) {
   return load; // {cohortId:{h1,h2}} — slot demand per half; compare to SLOTS_PER_HALF
 }
 
+// ---------- Collision detection (a group/instructor/room in two places the same week) ----------
+function collisionCells(placed, half=null) {
+  const inHalf = (s)=> half ? PHASES_OF[s.phase].includes(half) : true;
+  const list = placed.filter(inHalf);
+  const parsOf = (s)=> s.parity==="weekly" ? ["odd","even"] : [s.parity];
+  const halvesOf = (s)=> half ? [half] : PHASES_OF[s.phase];
+  const buckets = {};
+  for (const s of list) for (const h of halvesOf(s)) for (const pa of parsOf(s)) {
+    const ents = [];
+    s.cohorts.forEach((co)=>ents.push(["group", co]));
+    [s.ins, s.ins2].filter(Boolean).forEach((ti)=>ents.push(["instructor", ti]));
+    [s.room, s.room2].filter((r)=>r && r!=="ONLINE").forEach((r)=>ents.push(["room", r]));
+    for (const [kind, ent] of ents) { const k=`${kind}|${ent}|${s.day}|${s.period}|${h}|${pa}`; (buckets[k]=buckets[k]||new Set()).add(s); }
+  }
+  const seen = new Set(); const out = [];
+  for (const k in buckets) { const v=[...buckets[k]]; if (v.length>1) { const [kind,ent,day,period]=k.split("|");
+    const dk=`${kind}|${ent}|${day}|${period}`; if (seen.has(dk)) continue; seen.add(dk);
+    out.push({ kind, ent, day, period:+period, sessions:v }); } }
+  return out;
+}
+
 // ---------- Scoring ----------
 // half = "h1" | "h2" scores just that half; null/undefined scores the whole year (both halves)
 function scoreSchedule(placed, unplaced, teachers, half=null) {
@@ -829,11 +870,12 @@ function scoreSchedule(placed, unplaced, teachers, half=null) {
   instr -= over*8; if (tot) instr -= Math.round((1-hits/tot)*10);
   const combined = placed.filter((s)=>s.type==="L"&&s.cohorts.length>1).length;
   const room = Math.min(100, 85 + combined);
-  const hard = unplaced.length===0 ? 100 : Math.max(0, 100-unplaced.length*12);
+  const collisions = collisionCells(placed, half).length;
+  const hard = (unplaced.length===0 && collisions===0) ? 100 : Math.max(0, 100 - unplaced.length*12 - collisions*10);
   const cl = (x)=>Math.max(0,Math.min(100,Math.round(x)));
   const parts = { hard:cl(hard), student:cl(stud), instructor:cl(instr), balance:cl(balance), room:cl(room) };
   const overall = cl(parts.hard*0.4+parts.student*0.30+parts.balance*0.15+parts.instructor*0.10+parts.room*0.05);
-  return { parts, overall, metrics:{ gaps, p4, tueLate, imb, intBW, dupes } };
+  return { parts, overall, metrics:{ gaps, p4, tueLate, imb, intBW, dupes, collisions } };
 }
 
 // ---------- Teacher schedule rating ----------
@@ -1439,7 +1481,7 @@ function AuthModal({ lang, msg, onClose, onAuth }) {
 function AdminModal({ lang, list, users, selfId, onClose, onLoad, onRefresh, onRefreshUsers, onSetAdmin }) {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState("schedules");
-  const badge = { draft:"#6b7280", checkpoint:"#16a34a", final:"#7c3aed" };
+  const badge = { draft:"#6b7280", checkpoint:"#16a34a", final:"#7c3aed", autosave:"#f59e0b" };
   const rows = (list||[]).filter((r)=>{ const s=(q||"").toLowerCase(); return !s || (r.owner_email||"").toLowerCase().includes(s) || (r.name||"").toLowerCase().includes(s); });
   const urows = (users||[]).filter((r)=>{ const s=(q||"").toLowerCase(); return !s || (r.email||"").toLowerCase().includes(s); });
   const TabBtn = ({ id, label }) => (
@@ -1503,7 +1545,7 @@ function AdminModal({ lang, list, users, selfId, onClose, onLoad, onRefresh, onR
 function CloudModal({ lang, email, list, termStart, onClose, onSave, onLoad, onDelete, onSignOut }) {
   const [name, setName] = useState("");
   const [status, setStatus] = useState("checkpoint");
-  const badge = { draft:"#6b7280", checkpoint:"#16a34a", final:"#7c3aed" };
+  const badge = { draft:"#6b7280", checkpoint:"#16a34a", final:"#7c3aed", autosave:"#f59e0b" };
   return (
     <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:"#1a2438aa" }} onClick={onClose}>
       <div className="rounded-xl max-w-xl w-full max-h-[85vh] overflow-auto" style={{ background:PAPER }} onClick={(e)=>e.stopPropagation()}>
@@ -1585,6 +1627,9 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminList, setAdminList] = useState([]);
   const [adminUsers, setAdminUsers] = useState([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveStatus, setSaveStatus] = useState("checkpoint");
   const [authMsg, setAuthMsg] = useState("");
   const t = useCallback((k)=>tr(lang,k), [lang]);
 
@@ -1593,6 +1638,7 @@ export default function App() {
     for (const c of COHORTS) { const h1=Math.round(load[c.id].h1), h2=Math.round(load[c.id].h2);
       if (h1>=TH || h2>=TH) out.push({ id:c.id, h1, h2 }); }
     return out; }, [courses]);
+  const conflicts = useMemo(()=> collisionCells(placed, semView), [placed, semView]);
   const repeats = useMemo(()=>{ const seen={}; const out=[];
     placed.filter((s)=>phaseVisible(s.phase, semView)).forEach((s)=>s.cohorts.forEach((c)=>{ const k=c+"|"+s.day+"|"+s.courseIdx+"|"+s.type; (seen[k]=seen[k]||[]).push(s); }));
     for (const k in seen) { const g=seen[k]; if (new Set(g.map((s)=>s.period)).size>1) { const [c,d,ci]=k.split("|"); out.push({ cohort:c, day:d, courseIdx:+ci, ins:g[0].ins, periods:[...new Set(g.map((s)=>s.period))].sort() }); } }
@@ -1689,23 +1735,53 @@ export default function App() {
   };
   const signOut = async ()=>{ if (supabase) await supabase.auth.signOut(); setSession(null); setShowCloud(false); };
   const cloudSnapshot = ()=>({ placed, unplaced, courses, teachers, termStart, roomPri, rules });
+  // ---------- auto-save / unsaved-change protection ----------
+  const AUTOSAVE_KEY = "mandakh_scheduler_autosave_v1";
+  const snapStr = useCallback(()=>JSON.stringify(cloudSnapshot()), [placed, unplaced, courses, teachers, termStart, roomPri, rules]);
+  const savedSnapRef = useRef(null);
+  const autoRowRef = useRef(null);
+  const [dirty, setDirty] = useState(false);
+  const [restore, setRestore] = useState(null);
+  useEffect(()=>{ if (savedSnapRef.current===null) savedSnapRef.current = snapStr(); }, []); // baseline once
+  const markClean = useCallback(()=>{ savedSnapRef.current = snapStr(); setDirty(false); try { localStorage.removeItem(AUTOSAVE_KEY); } catch {} }, [snapStr]);
+  // detect edits and stash them locally (survives navigation / shutdown / crash)
+  useEffect(()=>{ if (savedSnapRef.current===null) return; const cur = snapStr(); const d = cur!==savedSnapRef.current; setDirty(d);
+    if (!d) return; const id = setTimeout(()=>{ try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ data:JSON.parse(cur), at:Date.now(), email:(session&&session.user.email)||"local" })); } catch {} }, 800);
+    return ()=>clearTimeout(id); }, [snapStr, session]);
+  // flush synchronously if the tab is closing
+  useEffect(()=>{ const h=()=>{ if (savedSnapRef.current===null) return; const cur=snapStr(); if (cur!==savedSnapRef.current) { try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ data:JSON.parse(cur), at:Date.now(), email:(session&&session.user.email)||"local" })); } catch {} } };
+    window.addEventListener("beforeunload", h); return ()=>window.removeEventListener("beforeunload", h); }, [snapStr, session]);
+  // on first load, offer to restore any locally-stashed unsaved work
+  useEffect(()=>{ try { const raw=localStorage.getItem(AUTOSAVE_KEY); if (raw) { const a=JSON.parse(raw); if (a && a.data && a.data.placed && a.data.placed.length) setRestore(a); } } catch {} }, []);
+  // when signed in, also keep one cloud "Unsaved…" row up to date for cross-device recovery
+  useEffect(()=>{ if (!supabase || !session) return;
+    const iv = setInterval(async ()=>{ if (savedSnapRef.current===null) return; const cur=snapStr(); if (cur===savedSnapRef.current) return;
+      const name = `Unsaved · ${session.user.email} · ${new Date().toLocaleString()}`;
+      try { if (autoRowRef.current) { await supabase.from("schedules").update({ name, term:`${termStart}`, data:JSON.parse(cur) }).eq("id", autoRowRef.current); }
+        else { const { data } = await supabase.from("schedules").insert({ user_id:session.user.id, name, term:`${termStart}`, status:"autosave", data:JSON.parse(cur) }).select("id").single(); if (data) autoRowRef.current=data.id; }
+        refreshCloud(); } catch {} }, 60000);
+    return ()=>clearInterval(iv); }, [supabase, session, snapStr, termStart, refreshCloud]);
+  const applySnapshot = (s)=>{ if (!s || !s.placed) return; setPlaced(clone(s.placed)); setUnplaced(clone(s.unplaced||[]));
+    if (s.courses) setCourses(clone(s.courses)); if (s.teachers) setTeachers(clone(s.teachers));
+    if (s.termStart) setTermStart(s.termStart); if (s.roomPri) setRoomPri(clone(s.roomPri)); if (s.rules) setRules(clone(s.rules)); };
   const cloudSave = async (name, status)=>{ if (!supabase || !session) return;
     try {
       const { error } = await supabase.from("schedules").insert({ user_id:session.user.id, name:name||("Schedule "+new Date().toLocaleString()), term:`${termStart}`, status, data:cloudSnapshot() });
-      if (error) showToast("conflict", `${t("cloudErr")}: ${error.message}`); else { showToast("valid", t("cloudSaved")); refreshCloud(); }
+      if (error) showToast("conflict", `${t("cloudErr")}: ${error.message}`);
+      else { showToast("valid", t("cloudSaved")); markClean();
+        if (autoRowRef.current) { try { await supabase.from("schedules").delete().eq("id", autoRowRef.current); } catch {} autoRowRef.current=null; }
+        refreshCloud(); }
     } catch (e) { showToast("conflict", `${t("cloudErr")}: ${e.message||e}`); }
   };
-  const handleSave = ()=>{ // header Save: persist to cloud when signed in, else prompt sign-in (no phantom local saves)
-    if (session) cloudSave(`${t("save")} · ${new Date().toLocaleString()}`, "checkpoint");
+  const handleSave = ()=>{ // header Save: open the name + status dialog when signed in, else prompt sign-in
+    if (session) { setSaveName(`${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}`); setSaveStatus("checkpoint"); setShowSaveDialog(true); }
     else { setAuthMsg(""); setShowAuth(true); showToast("valid", t("signInToSave")); }
   };
   const cloudLoad = async (id)=>{ if (!supabase) return;
     const { data, error } = await supabase.from("schedules").select("data").eq("id",id).single();
     if (error || !data) { showToast("conflict", t("cloudErr")); return; }
-    const s = data.data; if (s.placed) { setPlaced(clone(s.placed)); setUnplaced(clone(s.unplaced||[]));
-      if (s.courses) setCourses(clone(s.courses)); if (s.teachers) setTeachers(clone(s.teachers));
-      if (s.termStart) setTermStart(s.termStart); if (s.roomPri) setRoomPri(clone(s.roomPri)); if (s.rules) setRules(clone(s.rules)); }
-    setShowCloud(false); showToast("valid", t("cloudLoaded"));
+    applySnapshot(data.data); setShowCloud(false); showToast("valid", t("cloudLoaded"));
+    setTimeout(markClean, 0); // loaded state is the new clean baseline
   };
   const cloudDelete = async (id)=>{ if (!supabase) return; await supabase.from("schedules").delete().eq("id",id); refreshCloud(); };
   const cloudRename = async (id, cur)=>{ if (!supabase) return; const name = window.prompt(t("renameVersion"), cur); if (name==null || !name.trim()) return; await supabase.from("schedules").update({ name:name.trim() }).eq("id",id); refreshCloud(); };
@@ -1777,7 +1853,7 @@ export default function App() {
           <div className="flex items-center gap-1.5">
             <button onClick={()=>runGenerate("all")} className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold" style={{ background:"#f7f6f2", color:INK }}><Play size={13} strokeWidth={2.6}/> {t("generate")}</button>
             <button onClick={()=>runGenerate(hasHalves?"half":"all")} title={hasHalves?t("regenHalfHint"):undefined} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><RotateCw size={13}/> <span className="hidden lg:inline">{hasHalves ? `${t("regenerate")} · ${semView==="h1"?t("firstHalfShort"):t("secondHalfShort")}` : t("regenerate")}</span></button>
-            <button onClick={handleSave} title={session?t("saveToCloud"):t("saveVersion")} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background: session ? "#16a34a33" : "#ffffff1a" }}><Save size={13}/> <span className="hidden lg:inline">{t("save")}</span></button>
+            <button onClick={handleSave} title={session?(dirty?t("unsavedChanges"):t("saveToCloud")):t("saveVersion")} className="relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background: session ? "#16a34a33" : "#ffffff1a" }}><Save size={13}/> <span className="hidden lg:inline">{t("save")}</span>{dirty && <span className="absolute -top-0.5 -right-0.5 rounded-full" style={{ width:8, height:8, background:"#f59e0b", border:"1.5px solid #26324a" }}/>}</button>
             <button onClick={()=>setShowRules(true)} className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px]" style={{ background:"#ffffff1a" }}><Layers size={13}/> <span className="hidden lg:inline">{t("rulesBtn")}</span></button>
             {supabase && (session ? (
               <>
@@ -1839,6 +1915,40 @@ export default function App() {
       )}
       {showAdmin && isAdmin && (
         <AdminModal lang={lang} list={adminList} users={adminUsers} selfId={session?.user?.id} onClose={()=>setShowAdmin(false)} onLoad={(id)=>{ cloudLoad(id); setShowAdmin(false); }} onRefresh={refreshAdmin} onRefreshUsers={refreshUsers} onSetAdmin={setAdminFor} />
+      )}
+      {restore && (
+        <div className="no-print fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg" style={{ background:"#26324a", color:"#fff", maxWidth:"92vw" }}>
+          <RotateCw size={16} className="shrink-0"/>
+          <div className="text-[12px]"><div className="font-semibold">{t("restoreTitle")}</div><div className="opacity-70">{t("restoreFrom")} {new Date(restore.at).toLocaleString()}{restore.email && restore.email!=="local" ? " · "+restore.email : ""}</div></div>
+          <button onClick={()=>{ applySnapshot(restore.data); setRestore(null); showToast("valid", t("restored")); }} className="rounded-md px-3 py-1.5 text-[12px] font-semibold shrink-0" style={{ background:"#fff", color:"#26324a" }}>{t("restoreBtn")}</button>
+          <button onClick={()=>{ try{ localStorage.removeItem(AUTOSAVE_KEY); }catch{} setRestore(null); }} className="rounded-md px-2.5 py-1.5 text-[12px] shrink-0" style={{ background:"#ffffff22" }}>{t("discardBtn")}</button>
+        </div>
+      )}
+      {showSaveDialog && session && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:"#1a2438aa" }} onClick={()=>setShowSaveDialog(false)}>
+          <div className="rounded-xl max-w-sm w-full" style={{ background:PAPER }} onClick={(e)=>e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3" style={{ background:"#16a34a", color:PAPER }}>
+              <div className="flex items-center gap-2 font-semibold text-[14px]"><Save size={15}/> {t("saveVersionTitle")}</div>
+              <button onClick={()=>setShowSaveDialog(false)} className="rounded-md p-1" style={{ background:"#ffffff1a" }}><X size={16}/></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-[11px] font-semibold opacity-70">{t("versionName")}</label>
+                <input value={saveName} onChange={(e)=>setSaveName(e.target.value)} autoFocus className="mt-1 w-full rounded border px-2.5 py-2 text-[13px]" style={{ borderColor:LINE }} placeholder={t("versionNamePh")} />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold opacity-70">{t("versionStatus")}</label>
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  {[["checkpoint", t("stInProgress"), "#16a34a"],["final", t("stFinished"), "#7c3aed"]].map(([id,label,col])=>(
+                    <button key={id} onClick={()=>setSaveStatus(id)} className="rounded-lg px-3 py-2 text-[12px] font-medium border-2" style={ saveStatus===id ? { borderColor:col, background:`${col}12`, color:col } : { borderColor:LINE, background:"#fff", color:INK }}>{label}</button>
+                  ))}
+                </div>
+                <div className="text-[10px] opacity-55 mt-1.5">{t("saveOwnerNote").replace("{email}", session.user.email)}</div>
+              </div>
+              <button onClick={()=>{ cloudSave(saveName.trim()||new Date().toLocaleString(), saveStatus); setShowSaveDialog(false); }} className="w-full rounded-lg py-2.5 text-[13px] font-semibold flex items-center justify-center gap-2" style={{ background:INK, color:PAPER }}><Save size={14}/> {t("saveVersionBtn")}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Rules panel */}
@@ -2019,6 +2129,18 @@ export default function App() {
                   {overloaded.map((c)=>(<div key={c.id} className="rounded-md px-2 py-1.5" style={{ background:"#b4530911" }}>
                     <span className="font-semibold">{c.id}</span> — {c.h1>=SLOTS_PER_HALF-1 && <span>{t("firstHalf")}: {c.h1}/{SLOTS_PER_HALF}</span>}{c.h1>=SLOTS_PER_HALF-1 && c.h2>=SLOTS_PER_HALF-1 && " · "}{c.h2>=SLOTS_PER_HALF-1 && <span>{t("secondHalf")}: {c.h2}/{SLOTS_PER_HALF}</span>}
                   </div>))}
+                </div>
+              </Panel>
+            )}
+            {conflicts.length>0 && (
+              <Panel title={`${t("conflictsTitle")} (${conflicts.length})`} icon={AlertTriangle} accent="#be123c">
+                <div className="space-y-1.5 text-[11px]">
+                  <p className="opacity-70">{t("conflictsDesc")}</p>
+                  {conflicts.map((c,i)=>{ const ent = c.kind==="instructor" ? teacherName(teachers,c.ent) : c.ent; const names=[...new Set(c.sessions.map((s)=>courseName(courses,s.courseIdx)))];
+                    return (<div key={i} className="rounded-md px-2 py-1.5" style={{ background:"#be123c12" }}>
+                      <div className="font-semibold">{ent} · {dayLabel(lang,DAYS.find((d)=>d.id===c.day))} · P{c.period} <span className="opacity-60 font-normal">({t("cf_"+c.kind)})</span></div>
+                      <div className="opacity-75">{names.join("  +  ")}</div>
+                    </div>); })}
                 </div>
               </Panel>
             )}
