@@ -83,7 +83,7 @@ const STR = {
   colorByHint:{en:"Colour cards by cohort or by class type (lecture / seminar / lab / bonus)",mn:"Картыг бүлгээр эсвэл хичээлийн төрлөөр (лекц / семинар / лаб / нэмэлт) өнгөөр ялгах"},
   alreadyBooked:{en:"already has a class at that time",mn:"тэр цагт аль хэдийн хичээлтэй"},
   noRoomFree:{en:"no free room fits here",mn:"тохирох чөлөөт өрөө алга"},
-  tueBlocked:{en:"Tuesday after 13:45 — usually kept free (allowed if you need it)",mn:"Мягмар 13:45-аас хойш — ихэвчлэн чөлөөтэй (шаардлагатай бол болно)"},
+  tueBlocked:{en:"No classes after 13:45 on Tuesday",mn:"Мягмар гарагт 13:45-аас хойш хичээл байхгүй"},
   isOffOn:{en:"is off on",mn:"амралттай —"},
   lockHalf:{en:"Lock",mn:"Түгжих"},
   unlockHalf:{en:"Unlock",mn:"Тайлах"},
@@ -144,7 +144,7 @@ const STR = {
   capacityDesc:{en:"These groups are at or over the weekly limit ({n} class slots per half). When a group is this full, some classes stay unplaced or must use discouraged slots (P4 / Tuesday afternoon). Reduce the group's load or split it across instructors.",mn:"Эдгээр бүлэг долоо хоногийн хязгаарт хүрсэн эсвэл хэтэрсэн (хагас бүрт {n} цаг). Ийм дүүрэн үед зарим хичээл байрлахгүй эсвэл тохиромжгүй цаг (P4 / Мягмар үдээс хойш) ашиглана. Ачааллыг бууруулах эсвэл багш хуваана уу."},
   signInSaveVersions:{en:"Sign in to save versions you can return to (across sessions and devices).",mn:"Хувилбар хадгалахын тулд нэвтэрнэ үү (сесс, төхөөрөмж хооронд)."},
   unplacedHint:{en:"No feasible slot with a free room + instructor. Unlock nearby classes or add a room/period.",mn:"Багш, өрөө сул зэрэгцэх цаг олдсонгүй. Ойролцоох хичээлийг тайлах эсвэл өрөө/цаг нэмнэ үү."},
-  dragHint:{en:"Drag a class to an empty slot — hard conflicts are blocked live; late/Tuesday-afternoon slots warn but are allowed. Split cells alternate by week: top-left = odd, bottom-right = even.",mn:"Хичээлийг сул нүд рүү чирнэ үү — хатуу зөрчлийг шууд хориглоно; оройн/Мягмар үдээс хойшхи нүд сануулна ч болно. Хуваасан нүд долоо хоногоор ээлжилнэ: зүүн дээд = сондгой, баруун доод = тэгш."},
+  dragHint:{en:"Drag a class to an empty slot — hard conflicts are blocked live. The late 13:50 period warns but is allowed; Tuesday afternoon is blocked. Split cells alternate by week: top-left = odd, bottom-right = even.",mn:"Хичээлийг сул нүд рүү чирнэ үү — хатуу зөрчлийг шууд хориглоно. 13:50 оройн цаг сануулна ч болно; Мягмар үдээс хойш хаалттай. Хуваасан нүд долоо хоногоор ээлжилнэ: зүүн дээд = сондгой, баруун доод = тэгш."},
   importWhat:{en:"This is what the app parsed from your Excel import. Resolve any flags below before trusting the generated schedule.",mn:"Энэ бол Excel-ээс уншсан мэдээлэл. Хуваарийг найдахаас өмнө доорх анхааруулгыг шийднэ үү."},
   cohortsN:{en:"cohorts",mn:"бүлэг"},
   coursesN:{en:"courses",mn:"хичээл"},
@@ -663,7 +663,7 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     return true; };
   const placeCost = (s,d,p,pa) => {
     let c = 0;
-    if (rules.compactDay) { if (p === 4) c += 60; else if (p === 3) c += 1; if (d === "tue" && p >= TUE_CUTOFF_PERIOD) c += 200; } // avoid late period + Tuesday afternoon (allowed, strongly discouraged)
+    if (rules.compactDay) { if (p === 4) c += 60; else if (p === 3) c += 1; } // avoid the late 13:50 period (soft)
     if (rules.teacherPrefDay && prefMap[s.ins] === d) c -= 3;
     if (rules.teacherAvoid && ((avoidMap[s.ins] && avoidMap[s.ins].has(`${d}|${p}`)) || (avoidPer[s.ins] && avoidPer[s.ins].has(p)))) c += 40;
     if (rules.minGaps) for (const co of s.cohorts) for (const h of PHASES_OF[s.phase]) {
@@ -704,14 +704,16 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     return true;
   };
   let ALLOWP4 = true;   // single pass: P4 is allowed but heavily cost-penalized, so it's only used when needed
-  const domain = (s) => {
+  const domain = (s, relax) => {
+    relax = relax || {};
     const opts = []; const pars = s.freq==="weekly" ? ["weekly"] : ["odd","even"];
     for (const day of dayOrder) for (const per of PERIODS) for (const pa of pars) {
       if (!ALLOWP4 && per.id === 4) continue;
+      if (day.id === "tue" && per.id >= TUE_CUTOFF_PERIOD) continue; // Tuesday afternoon: hard block (no classes after 13:45)
       if (offMap[s.ins] === day.id) continue;
       if (!seqOK(s, day.id, per.id)) continue;
-      if (rules.minGaps && !contiguousOK(s, day.id, per.id)) continue;
-      if (rules.noSameCourseDay && placed.some((x)=>x.courseIdx===s.courseIdx && x.type===s.type && x.day===day.id && x.period!==per.id && x.cohorts.some((co)=>s.cohorts.includes(co)))) continue; // block same course+type twice in a day (e.g. two seminars); lecture+seminar/lecture+lab are allowed // per-half contiguity (no mid-day gaps)
+      if (!relax.gaps && rules.minGaps && !contiguousOK(s, day.id, per.id)) continue; // per-half contiguity (no mid-day gaps)
+      if (!relax.sameType && rules.noSameCourseDay && placed.some((x)=>x.courseIdx===s.courseIdx && x.type===s.type && x.day===day.id && x.period!==per.id && x.cohorts.some((co)=>s.cohorts.includes(co)))) continue; // avoid same course+type twice in a day (lecture+seminar/lecture+lab still allowed)
       if (!occ.canPlace(s, day.id, per.id, pa)) continue;
       let room, room2=null;
       if (s.parallel) { const rr = pickParallelRooms(s, day.id, per.id, pa, occ); if (!rr) continue; [room, room2] = rr; }
@@ -721,22 +723,29 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     opts.sort((a,b)=>a.c-b.c);
     return opts;
   };
+  // strict first; if a class can't fit, allow a mid-day gap (never a same-type repeat) so we still place it
+  const domainWithFallback = (s) => {
+    let o = domain(s);
+    if (!o.length && rules.minGaps) o = domain(s, { gaps:true }); // allow a gap to fit it — same-type-per-day stays hard
+    return o;
+  };
   let nodes = 0; const BUDGET = 12000;
   let bestPlaced = placed.slice(); let bestCount = placed.length; // best partial seen (starts at locked-only)
-  function dfs(i) {
+  function dfs(i, relax) {
     if (placed.length > bestCount) { bestCount = placed.length; bestPlaced = placed.slice(); } // remember deepest partial
     if (i === order.length) return true;
     if (++nodes > BUDGET) return false;
     const s = order[i];
-    for (const o of domain(s)) {
+    for (const o of (relax ? domainWithFallback(s) : domain(s))) {
       const ps = { ...s, day:o.d, period:o.p, parity:o.pa, room:o.room, room2:o.room2 };
       occ.add(ps); placed.push(ps);
-      if (dfs(i+1)) return true;
+      if (dfs(i+1, relax)) return true;
       occ.remove(ps); placed.pop();
     }
     return false;
   }
-  const ok = dfs(0);
+  let ok = dfs(0, false);                     // strict pass: fully honor no-gaps + no-same-type
+  if (!ok) { nodes = 0; ok = dfs(0, true); }  // only if strict can't place everything, relax those soft rules just enough
   const finalPlaced = ok ? placed : bestPlaced;   // never return empty — fall back to the best partial found
   if (rules.noSameCourseDay) { // repair: spread same-course sessions onto separate days now that all blocks exist
     const rocc = makeOcc(); finalPlaced.forEach((s)=>rocc.add(s));
@@ -770,6 +779,40 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
         if (!moved) rocc.add(s);
       }
       if (!changed) break;
+    }
+  }
+  if (rules.minGaps) { // compaction: slide classes into free slots so each group's day is contiguous (no mid-day gaps)
+    const gocc = makeOcc(); finalPlaced.forEach((s)=>gocc.add(s));
+    const bucketGaps = (buckets) => { let g=0; for (const [co,d,h] of buckets) { const ps=[]; for (const x of finalPlaced) if (x.day===d && x.cohorts.includes(co) && PHASES_OF[x.phase].includes(h)) ps.push(x.period); if (ps.length) { const u=[...new Set(ps)]; g += (Math.max(...u)-Math.min(...u)+1) - u.length; } } return g; };
+    const sameTypeClash = (s,d,p) => finalPlaced.some((x)=>x!==s && x.courseIdx===s.courseIdx && x.type===s.type && x.day===d && x.period!==p && x.cohorts.some((co)=>s.cohorts.includes(co)));
+    for (let pass=0; pass<8; pass++) { let improved=false;
+      for (const s of finalPlaced) {
+        if (s.locked) continue;
+        const od=s.day, op=s.period, or=s.room, or2=s.room2;
+        gocc.remove(s);
+        let best=null, bestDelta=0, bestTie=Infinity;
+        for (const day of dayOrder) for (const per of PERIODS) {
+          if (day.id===od && per.id===op) continue;
+          if (day.id==="tue" && per.id>=TUE_CUTOFF_PERIOD) continue;
+          if (offMap[s.ins]===day.id) continue;
+          if (sameTypeClash(s, day.id, per.id)) continue;
+          if (!seqOK(s, day.id, per.id)) continue;
+          if (!gocc.canPlace(s, day.id, per.id, s.parity)) continue;
+          const room = s.parallel ? pickParallelRooms(s,day.id,per.id,s.parity,gocc) : pickRoom(s,day.id,per.id,s.parity,gocc);
+          if (!room) continue;
+          const buckets=[]; for (const co of s.cohorts) for (const dd of [od, day.id]) for (const h of PHASES_OF[s.phase]) buckets.push([co,dd,h]);
+          const base = bucketGaps(buckets);
+          s.day=day.id; s.period=per.id;
+          const cand = bucketGaps(buckets);
+          s.day=od; s.period=op;
+          const delta = cand - base;
+          const tie = per.id + (per.id===4?5:0);           // among equal-gap moves, prefer earlier / avoid P4
+          if (delta < bestDelta - 1e-9 || (Math.abs(delta-bestDelta)<1e-9 && delta<0 && tie<bestTie)) { bestDelta=delta; bestTie=tie; best={ day:day.id, period:per.id, room }; }
+        }
+        if (best) { s.day=best.day; s.period=best.period; if (s.parallel){ s.room=best.room[0]; s.room2=best.room[1]; } else s.room=best.room; gocc.add(s); improved=true; }
+        else { s.day=od; s.period=op; s.room=or; s.room2=or2; gocc.add(s); }
+      }
+      if (!improved) break;
     }
   }
   const ids = new Set(finalPlaced.map((s)=>s.id));
@@ -812,7 +855,7 @@ async function generateCandidatesAsync(courses, teachers, locked, attempts, rule
 
 // ---------- Capacity check (over-subscription) ----------
 // Available student slots per half: Tue P1–P3 (3) + Wed/Thu/Fri/Mon P1–P4 (16) = 19
-const SLOTS_PER_HALF = DAYS.length*PERIODS.length; // all weekly slots usable; Tuesday P4 is discouraged, not blocked
+const SLOTS_PER_HALF = DAYS.length*PERIODS.length - (PERIODS.length - (TUE_CUTOFF_PERIOD-1)); // Tuesday afternoon blocked
 function cohortLoad(courses) {
   const load = {}; COHORTS.forEach((c)=>load[c.id]={ h1:0, h2:0 });
   for (const s of expandSessions(courses)) {
@@ -917,7 +960,7 @@ function validateMove(session, d, p, placed, lang, teachers, half) {
   const cp = session.parity; const pars = cp === "weekly" ? ["odd","even"] : [cp];
   const phases = half ? [half] : PHASES_OF[session.phase]; // only check the half being edited
   const dName = dayLabel(lang, DAYS.find((x)=>x.id===d));
-  if (d==="tue" && p>=TUE_CUTOFF_PERIOD) reasons.push({level:"warning", text:tr(lang,"tueBlocked")});
+  if (d==="tue" && p>=TUE_CUTOFF_PERIOD) reasons.push({level:"conflict", text:tr(lang,"tueBlocked")});
   if (offMap[session.ins]===d) reasons.push({level:"conflict", text:`${teacherName(teachers,session.ins)} ${tr(lang,"isOffOn")} ${dName}`});
   let insHit=false, cohHit=false;
   for (const ph of phases) for (const pa of pars) { const cell = get(d,p,ph,pa);
@@ -2040,7 +2083,7 @@ export default function App() {
                                 if (ss.length) { const idset = ss.map((x)=>x.id).sort().join(",");
                                   while (i+span < COHORTS.length) { const nid = COHORTS[i+span].id; const ns = cellSessions(d.id, p.id, nid);
                                     if (ns.map((x)=>x.id).sort().join(",")===idset && ss.every((x)=>x.cohorts.includes(nid))) span++; else break; } }
-                                const blocked = false;
+                                const blocked = d.id==="tue" && p.id>=TUE_CUTOFF_PERIOD;
                                 const hatched = blocked || rowEmpty; // gray out blocked slots AND fully-empty period rows
                                 out.push(<td key={ci} colSpan={span} {...dropProps(d.id,p.id,ci)} className="align-top px-1.5 py-1.5" style={{ height:"46px", borderBottom: lastRow ? `3px solid ${THICK}` : `1px solid ${LINE}`, borderLeft: yearStart ? `3px solid ${THICK}` : `1px solid ${LINE}`, background: hatched ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth: span>1?undefined:140 }}><CellContent list={ss} {...cellHandlers}/></td>);
                                 i += span;
@@ -2052,7 +2095,7 @@ export default function App() {
                       : PERIODS.map((p)=>(
                           <tr key={p.id}>
                             <td className="sticky left-0 z-10 px-2 py-2 align-top" style={{ background:"#fff", borderRight:`1px solid ${LINE}`, borderBottom:`1px solid ${LINE}`, width:74 }}><div className="text-[11px] font-semibold">P{p.id}</div><div className="text-[10px] opacity-50 whitespace-nowrap">{p.label}</div></td>
-                            {DAYS.map((d)=>{ const ss = cellSessions(d.id, p.id, null); const blocked = false;
+                            {DAYS.map((d)=>{ const ss = cellSessions(d.id, p.id, null); const blocked = d.id==="tue" && p.id>=TUE_CUTOFF_PERIOD;
                               return (<td key={d.id} {...dropProps(d.id,p.id)} className="align-top px-1.5 py-1.5" style={{ height:"46px", borderBottom:`1px solid ${LINE}`, borderLeft:`1px solid ${LINE}`, background: blocked ? "repeating-linear-gradient(45deg,#faf8f2,#faf8f2 6px,#f2efe6 6px,#f2efe6 12px)" : hoverCell===key(d.id,p.id) ? "#eef6f4" : "#fff", minWidth:158 }}><CellContent list={ss} {...cellHandlers}/></td>);
                             })}
                           </tr>
