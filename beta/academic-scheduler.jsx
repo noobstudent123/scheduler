@@ -766,6 +766,7 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
           if (day.id===s.day || offMap[s.ins]===day.id) continue;
           if (finalPlaced.some((x)=>x!==s && x.courseIdx===s.courseIdx && x.type===s.type && x.day===day.id && x.cohorts.some((co)=>s.cohorts.includes(co)))) continue;
           for (const per of PERIODS) {
+            if (day.id==="tue" && per.id>=TUE_CUTOFF_PERIOD) continue; // hard block: no classes Tue after 13:45 (matches domain() and compaction)
             if (!seqOK(s, day.id, per.id)) continue;
             if (rules.minGaps && !contigOK(s, day.id, per.id, s)) continue;
             if (!rocc.canPlace(s, day.id, per.id, s.parity)) continue;
