@@ -900,7 +900,7 @@ function scoreSchedule(placed, unplaced, teachers, half=null) {
     for (const c of COHORTS) { const pd=[];
       for (const d of DAYS) { const arr=[...cd[c.id][d.id]].sort((a,b)=>a-b); pd.push(arr.length);
         if (arr.length) gaps += (arr[arr.length-1]-arr[0]+1)-arr.length; }
-      const nz = pd.filter((x)=>x>0); if (nz.length) imb += Math.max(...nz)-Math.min(...nz);
+      if (pd.some((x)=>x>0)) imb += Math.max(...pd)-Math.min(...pd); // spread across ALL 5 days: cramming into fewer days is imbalance, not balance
     }
     placed.forEach((s)=>{ if (s.parity!=="weekly" && PHASES_OF[s.phase].includes(h)) s.cohorts.forEach((co)=>{ if (!cd[co]) return; const arr=[...cd[co][s.day]]; if (arr.length){ const mn=Math.min(...arr), mx=Math.max(...arr); if (s.period>mn && s.period<mx) intBW++; } }); });
   }
@@ -908,7 +908,7 @@ function scoreSchedule(placed, unplaced, teachers, half=null) {
   let dupes=0; { const seen={}; placed.forEach((s)=>s.cohorts.forEach((c)=>{ const k=c+"|"+s.day+"|"+s.courseIdx+"|"+s.type; (seen[k]=seen[k]||new Set()).add(s.period); }));
     for (const k in seen) if (seen[k].size>1) dupes += seen[k].size-1; } // same course + same type, same day (e.g. two seminars)
   let stud = 100 - gaps*6 - p4*2 - tueLate*15 - dupes*3;
-  let balance = 100 - imb*5;
+  let balance = 100 - imb*2; // k=2: with the corrected all-days spread (~15-26), realistic schedules land ~50-70 instead of clamping to 0
   let instr=100, over=0, hits=0, tot=0;
   for (const ins of teachers) {
     const byDay={}; placed.filter((s)=>s.ins===ins.id || s.ins2===ins.id).forEach((s)=>byDay[s.day]=(byDay[s.day]||0)+1);
