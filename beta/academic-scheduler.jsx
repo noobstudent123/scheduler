@@ -830,10 +830,10 @@ function rankCandidates(cands) {
     (y.score.overall - x.score.overall));               // 6. remaining soft preferences
   return cands;
 }
-function generateCandidates(courses, teachers, locked, attempts=8, rules=DEFAULT_RULES) {
-  const cands = []; const seen = new Set();
+function generateCandidates(courses, teachers, locked, attempts=8, rules=DEFAULT_RULES, seedBase=0) {
+  const cands = []; const seen = new Set(); const mix = seedBase>>>0; // seedBase 0 reproduces the original fixed stream; a per-Generate base re-rolls
   for (let a=0;a<attempts;a++) {
-    const res = scheduleOnce(courses, teachers, locked, mulberry32(a*2654435761 + 9973), rules);
+    const res = scheduleOnce(courses, teachers, locked, mulberry32((((a*2654435761 + 9973) >>> 0) ^ mix) >>> 0), rules);
     const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
     if (seen.has(sig)) continue; seen.add(sig);
     cands.push({ placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) });
@@ -841,10 +841,10 @@ function generateCandidates(courses, teachers, locked, attempts=8, rules=DEFAULT
   return rankCandidates(cands);
 }
 // UI version: yields to the browser between attempts so the page stays responsive
-async function generateCandidatesAsync(courses, teachers, locked, attempts, rules, onProgress) {
-  const cands = []; const seen = new Set();
+async function generateCandidatesAsync(courses, teachers, locked, attempts, rules, onProgress, seedBase=0) {
+  const cands = []; const seen = new Set(); const mix = seedBase>>>0;
   for (let a=0;a<attempts;a++) {
-    const res = scheduleOnce(courses, teachers, locked, mulberry32(a*2654435761 + 9973), rules);
+    const res = scheduleOnce(courses, teachers, locked, mulberry32((((a*2654435761 + 9973) >>> 0) ^ mix) >>> 0), rules);
     const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
     if (!seen.has(sig)) { seen.add(sig); cands.push({ placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) }); }
     if (onProgress) onProgress(a+1, attempts);
@@ -1702,7 +1702,7 @@ export default function App() {
     const steps = ["gen1","gen2","gen3","gen4","gen5"]; let i=0; setGenStep(steps[0]);
     const iv = setInterval(()=>{ i=(i+1)%steps.length; setGenStep(steps[i]); }, 200);
     setTimeout(async ()=>{
-      const cands = await generateCandidatesAsync(courses, teachers, locks, 8, rules);
+      const cands = await generateCandidatesAsync(courses, teachers, locks, 8, rules, undefined, Date.now()); // per-Generate seed base → each click re-rolls
       clearInterval(iv);
       if (cands.length) { setCandidates(cands); setActiveCand(0); setPlaced(clone(cands[0].placed)); setUnplaced(cands[0].unplaced); }
       setGenerating(false); setSelected(null);
