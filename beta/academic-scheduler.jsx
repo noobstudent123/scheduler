@@ -603,6 +603,8 @@ function pickRoom(s,d,p,pa,occ) {
   if (s.cohorts.length === 1) { const hr = homeRoom(s.cohorts[0]); const r = ROOMS.find((x)=>x.id===hr); if (hr && r.cap >= s.students && occ.roomFree(hr,s,d,p,pa)) return hr; }
   // combined groups (or anything too big for a home room) go to a lecture hall, in priority order
   for (const h of hallsByPri()) { const r = ROOMS.find((x)=>x.id===h); if (r.cap >= s.students && occ.roomFree(h,s,d,p,pa)) return h; }
+  // last-resort fallback: any seminar room that fits and is free — a busy home room (or full halls) shouldn't strand a placeable session
+  for (const r of ROOMS) { if (r.type==="seminar" && r.cap >= s.students && occ.roomFree(r.id,s,d,p,pa)) return r.id; }
   return null;
 }
 // ---------- Default soft-rule switches (see RULES_META) ----------
