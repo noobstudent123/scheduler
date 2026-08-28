@@ -822,34 +822,64 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
   const unplaced = order.filter((s)=>!ids.has(s.id));
   return { placed: finalPlaced, unplaced };
 }
-function rankCandidates(cands) {
-  cands.sort((x,y)=>
-    (x.unplaced.length - y.unplaced.length) ||          // 1. hard constraints (all placed)
-    (x.score.metrics.dupes - y.score.metrics.dupes) ||  // 2. fewest same-course-per-day repeats
-    (x.score.metrics.gaps  - y.score.metrics.gaps)  ||  // 3. fewest mid-day breaks
-    (x.score.metrics.intBW - y.score.metrics.intBW) ||  // 4. biweekly classes at the day edge
-    (x.score.metrics.imb   - y.score.metrics.imb)   ||  // 5. best day-to-day distribution
-    (y.score.overall - x.score.overall));               // 6. remaining soft preferences
-  return cands;
+// Shared candidate comparator — the corrected lexicographic objective (NOT overall-first):
+// unplaced -> collisions -> same-type(dupes) -> gaps -> biweekly-interior -> spread-imbalance,
+// with overall only as a final tiebreak. Selection never *optimizes* the overall scalar.
+function cmpCandidates(x, y) {
+  return (x.unplaced.length - y.unplaced.length) ||          // 1. all placed (hard)
+    (x.score.metrics.collisions - y.score.metrics.collisions) || // 2. no double-booking (hard)
+    (x.score.metrics.dupes - y.score.metrics.dupes) ||        // 3. fewest same-type-per-day
+    (x.score.metrics.gaps  - y.score.metrics.gaps)  ||        // 4. fewest mid-day breaks
+    (x.score.metrics.intBW - y.score.metrics.intBW) ||        // 5. biweekly classes at the day edge
+    (x.score.metrics.imb   - y.score.metrics.imb)   ||        // 6. best spread across all 5 days
+    (y.score.overall - x.score.overall);                      // 7. remaining soft preferences (tiebreak only)
 }
-function generateCandidates(courses, teachers, locked, attempts=8, rules=DEFAULT_RULES, seedBase=0) {
-  const cands = []; const seen = new Set(); const mix = seedBase>>>0; // seedBase 0 reproduces the original fixed stream; a per-Generate base re-rolls
-  for (let a=0;a<attempts;a++) {
-    const res = scheduleOnce(courses, teachers, locked, mulberry32((((a*2654435761 + 9973) >>> 0) ^ mix) >>> 0), rules);
-    const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
-    if (seen.has(sig)) continue; seen.add(sig);
-    cands.push({ placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) });
+function rankCandidates(cands) { cands.sort(cmpCandidates); return cands; }
+// Adaptive restarts: keep restarting while the rank-best keeps improving; stop on a plateau (a clean
+// placement that isn't being bettered) or when the wall-clock budget is spent — whichever comes first.
+// Reseeding per attempt is inherited from the seedBase XOR-mix. Selection is by cmpCandidates only.
+const GEN_MIN_ATTEMPTS = 8;        // floor: preserves prior behaviour on easy instances
+const GEN_MAX_ATTEMPTS = 48;       // hard cap so a pathological instance can't run away
+const GEN_TIME_BUDGET_MS = 6000;   // wall-clock ceiling per Generate
+const GEN_PATIENCE = 10;           // stop once this many restarts pass with no rank-best improvement (past the floor)
+function candidateAt(courses, teachers, locked, rules, a, mix) {
+  const res = scheduleOnce(courses, teachers, locked, mulberry32((((a*2654435761 + 9973) >>> 0) ^ mix) >>> 0), rules);
+  const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
+  return { res, sig };
+}
+function generateCandidates(courses, teachers, locked, attempts=GEN_MIN_ATTEMPTS, rules=DEFAULT_RULES, seedBase=0) {
+  const cands = []; const seen = new Set(); const mix = seedBase>>>0;
+  const floor = Math.max(1, attempts||GEN_MIN_ATTEMPTS); const t0 = Date.now();
+  let best = null, noImp = 0;
+  for (let a=0; a<GEN_MAX_ATTEMPTS; a++) {
+    const aStart = Date.now();
+    const { res, sig } = candidateAt(courses, teachers, locked, rules, a, mix);
+    if (!seen.has(sig)) { seen.add(sig);
+      const cand = { placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) };
+      cands.push(cand);
+      if (!best || cmpCandidates(cand, best) < 0) { best = cand; noImp = 0; } else noImp++;
+    } else noImp++;
+    // predictive stop: don't start another restart that would push wall-clock past the budget
+    if ((a+1) >= floor && (noImp >= GEN_PATIENCE || (Date.now()-t0) + (Date.now()-aStart) >= GEN_TIME_BUDGET_MS)) break;
   }
   return rankCandidates(cands);
 }
 // UI version: yields to the browser between attempts so the page stays responsive
-async function generateCandidatesAsync(courses, teachers, locked, attempts, rules, onProgress, seedBase=0) {
+async function generateCandidatesAsync(courses, teachers, locked, attempts=GEN_MIN_ATTEMPTS, rules=DEFAULT_RULES, onProgress, seedBase=0) {
   const cands = []; const seen = new Set(); const mix = seedBase>>>0;
-  for (let a=0;a<attempts;a++) {
-    const res = scheduleOnce(courses, teachers, locked, mulberry32((((a*2654435761 + 9973) >>> 0) ^ mix) >>> 0), rules);
-    const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
-    if (!seen.has(sig)) { seen.add(sig); cands.push({ placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) }); }
-    if (onProgress) onProgress(a+1, attempts);
+  const floor = Math.max(1, attempts||GEN_MIN_ATTEMPTS); const t0 = Date.now();
+  let best = null, noImp = 0;
+  for (let a=0; a<GEN_MAX_ATTEMPTS; a++) {
+    const aStart = Date.now();
+    const { res, sig } = candidateAt(courses, teachers, locked, rules, a, mix);
+    if (!seen.has(sig)) { seen.add(sig);
+      const cand = { placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) };
+      cands.push(cand);
+      if (!best || cmpCandidates(cand, best) < 0) { best = cand; noImp = 0; } else noImp++;
+    } else noImp++;
+    if (onProgress) onProgress(Math.min(a+1, GEN_MAX_ATTEMPTS), GEN_MAX_ATTEMPTS);
+    // predictive stop: don't start another restart that would push wall-clock past the budget
+    if ((a+1) >= floor && (noImp >= GEN_PATIENCE || (Date.now()-t0) + (Date.now()-aStart) >= GEN_TIME_BUDGET_MS)) break;
     await new Promise((r)=>setTimeout(r, 0)); // let the UI breathe between attempts
   }
   return rankCandidates(cands);
