@@ -545,7 +545,7 @@ function findRoom(s, d, p, cp, get, half) {
   const free = (rid) => { for (const ph of phases) for (const pa of pars) if (get(d,p,ph,pa).rooms.has(rid)) return false; return true; };
   switch (s.roomType) {
     case "online": return "ONLINE";
-    case "lab": return free("201") ? "201" : null;
+    case "lab": { const r = ROOMS.find((x)=>x.id==="201"); return (r && r.cap >= s.students && free("201")) ? "201" : null; }
     default: {
       if (s.cohorts.length === 1) { const hr = homeRoom(s.cohorts[0]); const r = ROOMS.find((x)=>x.id===hr); if (hr && r.cap >= s.students && free(hr)) return hr; }
       for (const h of hallsByPri()) { const r = ROOMS.find((x)=>x.id===h); if (free(h) && r.cap >= s.students) return h; }
@@ -598,11 +598,13 @@ function pickParallelRooms(s,d,p,pa,occ) {
 }
 function pickRoom(s,d,p,pa,occ) {
   if (s.roomType === "online") return "ONLINE";
-  if (s.roomType === "lab") return occ.roomFree("201",s,d,p,pa) ? "201" : null;
+  if (s.roomType === "lab") { const r = ROOMS.find((x)=>x.id==="201"); return (r && r.cap >= s.students && occ.roomFree("201",s,d,p,pa)) ? "201" : null; }
   // a single cohort that fits its own room stays there (3rd/4th-year lectures don't move to a hall)
   if (s.cohorts.length === 1) { const hr = homeRoom(s.cohorts[0]); const r = ROOMS.find((x)=>x.id===hr); if (hr && r.cap >= s.students && occ.roomFree(hr,s,d,p,pa)) return hr; }
   // combined groups (or anything too big for a home room) go to a lecture hall, in priority order
   for (const h of hallsByPri()) { const r = ROOMS.find((x)=>x.id===h); if (r.cap >= s.students && occ.roomFree(h,s,d,p,pa)) return h; }
+  // last-resort fallback: any seminar room that fits and is free — a busy home room (or full halls) shouldn't strand a placeable session
+  for (const r of ROOMS) { if (r.type==="seminar" && r.cap >= s.students && occ.roomFree(r.id,s,d,p,pa)) return r.id; }
   return null;
 }
 // ---------- Default soft-rule switches (see RULES_META) ----------
@@ -766,6 +768,7 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
           if (day.id===s.day || offMap[s.ins]===day.id) continue;
           if (finalPlaced.some((x)=>x!==s && x.courseIdx===s.courseIdx && x.type===s.type && x.day===day.id && x.cohorts.some((co)=>s.cohorts.includes(co)))) continue;
           for (const per of PERIODS) {
+            if (day.id==="tue" && per.id>=TUE_CUTOFF_PERIOD) continue; // hard block: no classes Tue after 13:45 (matches domain() and compaction)
             if (!seqOK(s, day.id, per.id)) continue;
             if (rules.minGaps && !contigOK(s, day.id, per.id, s)) continue;
             if (!rocc.canPlace(s, day.id, per.id, s.parity)) continue;
@@ -819,34 +822,64 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
   const unplaced = order.filter((s)=>!ids.has(s.id));
   return { placed: finalPlaced, unplaced };
 }
-function rankCandidates(cands) {
-  cands.sort((x,y)=>
-    (x.unplaced.length - y.unplaced.length) ||          // 1. hard constraints (all placed)
-    (x.score.metrics.dupes - y.score.metrics.dupes) ||  // 2. fewest same-course-per-day repeats
-    (x.score.metrics.gaps  - y.score.metrics.gaps)  ||  // 3. fewest mid-day breaks
-    (x.score.metrics.intBW - y.score.metrics.intBW) ||  // 4. biweekly classes at the day edge
-    (x.score.metrics.imb   - y.score.metrics.imb)   ||  // 5. best day-to-day distribution
-    (y.score.overall - x.score.overall));               // 6. remaining soft preferences
-  return cands;
+// Shared candidate comparator — the corrected lexicographic objective (NOT overall-first):
+// unplaced -> collisions -> same-type(dupes) -> gaps -> biweekly-interior -> spread-imbalance,
+// with overall only as a final tiebreak. Selection never *optimizes* the overall scalar.
+function cmpCandidates(x, y) {
+  return (x.unplaced.length - y.unplaced.length) ||          // 1. all placed (hard)
+    (x.score.metrics.collisions - y.score.metrics.collisions) || // 2. no double-booking (hard)
+    (x.score.metrics.dupes - y.score.metrics.dupes) ||        // 3. fewest same-type-per-day
+    (x.score.metrics.gaps  - y.score.metrics.gaps)  ||        // 4. fewest mid-day breaks
+    (x.score.metrics.intBW - y.score.metrics.intBW) ||        // 5. biweekly classes at the day edge
+    (x.score.metrics.imb   - y.score.metrics.imb)   ||        // 6. best spread across all 5 days
+    (y.score.overall - x.score.overall);                      // 7. remaining soft preferences (tiebreak only)
 }
-function generateCandidates(courses, teachers, locked, attempts=8, rules=DEFAULT_RULES) {
-  const cands = []; const seen = new Set();
-  for (let a=0;a<attempts;a++) {
-    const res = scheduleOnce(courses, teachers, locked, mulberry32(a*2654435761 + 9973), rules);
-    const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
-    if (seen.has(sig)) continue; seen.add(sig);
-    cands.push({ placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) });
+function rankCandidates(cands) { cands.sort(cmpCandidates); return cands; }
+// Adaptive restarts: keep restarting while the rank-best keeps improving; stop on a plateau (a clean
+// placement that isn't being bettered) or when the wall-clock budget is spent — whichever comes first.
+// Reseeding per attempt is inherited from the seedBase XOR-mix. Selection is by cmpCandidates only.
+const GEN_MIN_ATTEMPTS = 8;        // floor: preserves prior behaviour on easy instances
+const GEN_MAX_ATTEMPTS = 48;       // hard cap so a pathological instance can't run away
+const GEN_TIME_BUDGET_MS = 6000;   // wall-clock ceiling per Generate
+const GEN_PATIENCE = 10;           // stop once this many restarts pass with no rank-best improvement (past the floor)
+function candidateAt(courses, teachers, locked, rules, a, mix) {
+  const res = scheduleOnce(courses, teachers, locked, mulberry32((((a*2654435761 + 9973) >>> 0) ^ mix) >>> 0), rules);
+  const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
+  return { res, sig };
+}
+function generateCandidates(courses, teachers, locked, attempts=GEN_MIN_ATTEMPTS, rules=DEFAULT_RULES, seedBase=0) {
+  const cands = []; const seen = new Set(); const mix = seedBase>>>0;
+  const floor = Math.max(1, attempts||GEN_MIN_ATTEMPTS); const t0 = Date.now();
+  let best = null, noImp = 0;
+  for (let a=0; a<GEN_MAX_ATTEMPTS; a++) {
+    const aStart = Date.now();
+    const { res, sig } = candidateAt(courses, teachers, locked, rules, a, mix);
+    if (!seen.has(sig)) { seen.add(sig);
+      const cand = { placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) };
+      cands.push(cand);
+      if (!best || cmpCandidates(cand, best) < 0) { best = cand; noImp = 0; } else noImp++;
+    } else noImp++;
+    // predictive stop: don't start another restart that would push wall-clock past the budget
+    if ((a+1) >= floor && (noImp >= GEN_PATIENCE || (Date.now()-t0) + (Date.now()-aStart) >= GEN_TIME_BUDGET_MS)) break;
   }
   return rankCandidates(cands);
 }
 // UI version: yields to the browser between attempts so the page stays responsive
-async function generateCandidatesAsync(courses, teachers, locked, attempts, rules, onProgress) {
-  const cands = []; const seen = new Set();
-  for (let a=0;a<attempts;a++) {
-    const res = scheduleOnce(courses, teachers, locked, mulberry32(a*2654435761 + 9973), rules);
-    const sig = res.placed.map((s)=>`${s.courseIdx}${s.type}${s.cohorts.join("")}${s.day}${s.period}${s.parity}`).sort().join("|");
-    if (!seen.has(sig)) { seen.add(sig); cands.push({ placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) }); }
-    if (onProgress) onProgress(a+1, attempts);
+async function generateCandidatesAsync(courses, teachers, locked, attempts=GEN_MIN_ATTEMPTS, rules=DEFAULT_RULES, onProgress, seedBase=0) {
+  const cands = []; const seen = new Set(); const mix = seedBase>>>0;
+  const floor = Math.max(1, attempts||GEN_MIN_ATTEMPTS); const t0 = Date.now();
+  let best = null, noImp = 0;
+  for (let a=0; a<GEN_MAX_ATTEMPTS; a++) {
+    const aStart = Date.now();
+    const { res, sig } = candidateAt(courses, teachers, locked, rules, a, mix);
+    if (!seen.has(sig)) { seen.add(sig);
+      const cand = { placed:res.placed, unplaced:res.unplaced, score:scoreSchedule(res.placed, res.unplaced, teachers) };
+      cands.push(cand);
+      if (!best || cmpCandidates(cand, best) < 0) { best = cand; noImp = 0; } else noImp++;
+    } else noImp++;
+    if (onProgress) onProgress(Math.min(a+1, GEN_MAX_ATTEMPTS), GEN_MAX_ATTEMPTS);
+    // predictive stop: don't start another restart that would push wall-clock past the budget
+    if ((a+1) >= floor && (noImp >= GEN_PATIENCE || (Date.now()-t0) + (Date.now()-aStart) >= GEN_TIME_BUDGET_MS)) break;
     await new Promise((r)=>setTimeout(r, 0)); // let the UI breathe between attempts
   }
   return rankCandidates(cands);
@@ -899,7 +932,7 @@ function scoreSchedule(placed, unplaced, teachers, half=null) {
     for (const c of COHORTS) { const pd=[];
       for (const d of DAYS) { const arr=[...cd[c.id][d.id]].sort((a,b)=>a-b); pd.push(arr.length);
         if (arr.length) gaps += (arr[arr.length-1]-arr[0]+1)-arr.length; }
-      const nz = pd.filter((x)=>x>0); if (nz.length) imb += Math.max(...nz)-Math.min(...nz);
+      if (pd.some((x)=>x>0)) imb += Math.max(...pd)-Math.min(...pd); // spread across ALL 5 days: cramming into fewer days is imbalance, not balance
     }
     placed.forEach((s)=>{ if (s.parity!=="weekly" && PHASES_OF[s.phase].includes(h)) s.cohorts.forEach((co)=>{ if (!cd[co]) return; const arr=[...cd[co][s.day]]; if (arr.length){ const mn=Math.min(...arr), mx=Math.max(...arr); if (s.period>mn && s.period<mx) intBW++; } }); });
   }
@@ -907,7 +940,7 @@ function scoreSchedule(placed, unplaced, teachers, half=null) {
   let dupes=0; { const seen={}; placed.forEach((s)=>s.cohorts.forEach((c)=>{ const k=c+"|"+s.day+"|"+s.courseIdx+"|"+s.type; (seen[k]=seen[k]||new Set()).add(s.period); }));
     for (const k in seen) if (seen[k].size>1) dupes += seen[k].size-1; } // same course + same type, same day (e.g. two seminars)
   let stud = 100 - gaps*6 - p4*2 - tueLate*15 - dupes*3;
-  let balance = 100 - imb*5;
+  let balance = 100 - imb*2; // k=2: with the corrected all-days spread (~15-26), realistic schedules land ~50-70 instead of clamping to 0
   let instr=100, over=0, hits=0, tot=0;
   for (const ins of teachers) {
     const byDay={}; placed.filter((s)=>s.ins===ins.id || s.ins2===ins.id).forEach((s)=>byDay[s.day]=(byDay[s.day]||0)+1);
@@ -1701,7 +1734,7 @@ export default function App() {
     const steps = ["gen1","gen2","gen3","gen4","gen5"]; let i=0; setGenStep(steps[0]);
     const iv = setInterval(()=>{ i=(i+1)%steps.length; setGenStep(steps[i]); }, 200);
     setTimeout(async ()=>{
-      const cands = await generateCandidatesAsync(courses, teachers, locks, 8, rules);
+      const cands = await generateCandidatesAsync(courses, teachers, locks, 8, rules, undefined, Date.now()); // per-Generate seed base → each click re-rolls
       clearInterval(iv);
       if (cands.length) { setCandidates(cands); setActiveCand(0); setPlaced(clone(cands[0].placed)); setUnplaced(cands[0].unplaced); }
       setGenerating(false); setSelected(null);
