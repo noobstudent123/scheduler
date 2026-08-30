@@ -1,0 +1,8 @@
+# validation harness — never commit installed deps, build temp, or local data
+tools/node_modules/
+tools/.probe-tmp/
+tools/package-lock.json
+
+# real course data stays local (never committed)
+Mandakh_Course_Data*.xlsx
+*.xlsx

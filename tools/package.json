@@ -1,0 +1,20 @@
+{
+  "name": "scheduler-validation-harness",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local validation harness for the rules-as-data refactor: engine-vs-engine identity probe + jsdom smoke. Not shipped, not part of the app build.",
+  "scripts": {
+    "probe": "node identity-probe.mjs",
+    "smoke": "node smoke.mjs"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5",
+    "@supabase/supabase-js": "^2.45.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "lucide-react": "^0.383.0",
+    "esbuild": "^0.23.0",
+    "jsdom": "^30.0.1"
+  }
+}
