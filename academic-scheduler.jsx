@@ -587,24 +587,46 @@ function makeOcc() {
   return { add, remove, canPlace, roomFree };
 }
 // two seminar rooms for a parallel (level-split) session — prefer the cohorts' own home rooms
+// ─── Declarative parallel-split room rule (link:parallel_split, increment 6) ───
+// A parallel session runs two sections simultaneously; it needs `needed` free rooms that each fit half
+// the cohort, preferring the cohorts' home rooms. The `link` rule kind from the taxonomy, as data.
+const PARALLEL_ROOM_RULE = {
+  id:"parallel_split", kind:"link", enforcement:"hard", needed:2,
+  online:()=> ["ONLINE","ONLINE"],
+  candidates:(s)=>{ const perSec = Math.ceil(s.students/2);
+    const seminar = ROOMS.filter((r)=>r.type==="seminar" && r.cap>=perSec).map((r)=>r.id);
+    const homes = s.cohorts.map((c)=>homeRoom(c)).filter((h)=>h && seminar.includes(h));
+    return [...new Set([...homes, ...seminar])]; },
+};
+
 function pickParallelRooms(s,d,p,pa,occ) {
-  if (s.roomType === "online") return ["ONLINE","ONLINE"];
-  const perSec = Math.ceil(s.students/2);
-  const seminar = ROOMS.filter((r)=>r.type==="seminar" && r.cap>=perSec).map((r)=>r.id);
-  const homes = s.cohorts.map((c)=>homeRoom(c)).filter((h)=>h && seminar.includes(h));
-  const ordered = [...new Set([...homes, ...seminar])];
-  const free = ordered.filter((rid)=>occ.roomFree(rid,s,d,p,pa));
-  return free.length>=2 ? [free[0], free[1]] : null;
+  if (s.roomType === "online") return PARALLEL_ROOM_RULE.online();
+  const free = PARALLEL_ROOM_RULE.candidates(s).filter((rid)=>occ.roomFree(rid,s,d,p,pa));
+  return free.length>=PARALLEL_ROOM_RULE.needed ? free.slice(0, PARALLEL_ROOM_RULE.needed) : null;
 }
+// ─── Declarative room-resolution strategies (v0.1 rules-as-data refactor, increment 3) ───
+// Ordered; first strategy whose `when` matches and yields a capacity-fitting, free room wins.
+// `terminal` = if it matches but nothing works, stop (don't cascade) — confines a lab/online session
+// to its only valid room. Capacity (`r.cap >= s.students`) is applied uniformly, so the lab-capacity
+// guard is now just "the capacity rule, everywhere" rather than a special case that could be forgotten.
+const ROOM_STRATEGIES = [
+  { id:"online",       kind:"eligibility", when:(s)=> s.roomType==="online",  candidates:()=> ["ONLINE"], skipChecks:true, terminal:true },
+  { id:"lab",          kind:"eligibility", when:(s)=> s.roomType==="lab",     candidates:()=> ["201"], terminal:true },
+  { id:"home_room",    kind:"eligibility", when:(s)=> s.cohorts.length===1,   candidates:(s)=>{ const hr=homeRoom(s.cohorts[0]); return hr?[hr]:[]; }, terminal:false },
+  { id:"lecture_hall", kind:"eligibility", when:()=> true,                    candidates:()=> hallsByPri(), terminal:false },
+  { id:"any_seminar",  kind:"eligibility", when:()=> true,                    candidates:()=> ROOMS.filter((r)=>r.type==="seminar").map((r)=>r.id), terminal:false },
+];
+
 function pickRoom(s,d,p,pa,occ) {
-  if (s.roomType === "online") return "ONLINE";
-  if (s.roomType === "lab") { const r = ROOMS.find((x)=>x.id==="201"); return (r && r.cap >= s.students && occ.roomFree("201",s,d,p,pa)) ? "201" : null; }
-  // a single cohort that fits its own room stays there (3rd/4th-year lectures don't move to a hall)
-  if (s.cohorts.length === 1) { const hr = homeRoom(s.cohorts[0]); const r = ROOMS.find((x)=>x.id===hr); if (hr && r.cap >= s.students && occ.roomFree(hr,s,d,p,pa)) return hr; }
-  // combined groups (or anything too big for a home room) go to a lecture hall, in priority order
-  for (const h of hallsByPri()) { const r = ROOMS.find((x)=>x.id===h); if (r.cap >= s.students && occ.roomFree(h,s,d,p,pa)) return h; }
-  // last-resort fallback: any seminar room that fits and is free — a busy home room (or full halls) shouldn't strand a placeable session
-  for (const r of ROOMS) { if (r.type==="seminar" && r.cap >= s.students && occ.roomFree(r.id,s,d,p,pa)) return r.id; }
+  for (const strat of ROOM_STRATEGIES) {
+    if (!strat.when(s)) continue;
+    for (const rid of strat.candidates(s)) {
+      if (strat.skipChecks) return rid;
+      const r = ROOMS.find((x)=>x.id===rid);
+      if (r && r.cap >= s.students && occ.roomFree(rid,s,d,p,pa)) return rid;
+    }
+    if (strat.terminal) return null;
+  }
   return null;
 }
 // ---------- Default soft-rule switches (see RULES_META) ----------
@@ -631,6 +653,59 @@ const RULES_SOFT = [
   { id:"balanceTeacher", en:"Balance instructor load across the week", mn:"Багшийн ачааллыг долоо хоногт тэнцвэржүүлэх" },
 ];
 // ---------- backtracking scheduler (hard rules always on; soft rules from `rules`) ----------
+// ─── Declarative placement rules (v0.1 rules-as-data refactor) ───
+// Each rule's blocks(session, day, period, parity, cx) returns true if the placement VIOLATES it.
+// enforcement: "hard" = never relaxed; "hybrid" = relaxed (via `relax` flag) only under placement
+// pressure, in the order the two-pass fallback applies. This array is the single source of truth the
+// domain evaluates — no hardcoded constraint logic remains in domain().
+const PLACEMENT_RULES = [
+  { id:"forbid_tue_pm",  kind:"forbid_time",   enforcement:"hard",
+    blocks:(s,d,p,pa,cx)=> d==="tue" && p>=TUE_CUTOFF_PERIOD },
+  { id:"instr_day_off",  kind:"availability",  enforcement:"hard",
+    blocks:(s,d,p,pa,cx)=> cx.offMap[s.ins]===d },
+  { id:"precedence",     kind:"precedence",    enforcement:"hard",
+    blocks:(s,d,p,pa,cx)=> !cx.seqOK(s,d,p) },
+  { id:"contiguity",     kind:"contiguity",    enforcement:"hybrid", relax:"gaps",     gate:"minGaps",
+    blocks:(s,d,p,pa,cx)=> cx.rules.minGaps && !cx.contiguousOK(s,d,p) },
+  { id:"limit_per_day",  kind:"limit_per_day", enforcement:"hybrid", relax:"sameType", gate:"noSameCourseDay",
+    blocks:(s,d,p,pa,cx)=> cx.rules.noSameCourseDay && cx.placed.some((x)=>x.courseIdx===s.courseIdx && x.type===s.type && x.day===d && x.period!==p && x.cohorts.some((co)=>s.cohorts.includes(co))) },
+  { id:"no_overlap",     kind:"no_overlap",    enforcement:"hard",
+    blocks:(s,d,p,pa,cx)=> !cx.occ.canPlace(s,d,p,pa) },
+];
+
+// ─── Declarative soft/cost rules (v0.1 rules-as-data refactor, increment 2) ───
+// Each rule's cost(session, day, period, parity, cx) returns an integer penalty (or negative = reward).
+// `gate` ties it to a Rules-panel toggle; `weight`-like magnitudes live inside cost() for now (a rule
+// builder would later surface them). Summed (order-independent for integers) before one rand() draw.
+const COST_RULES = [
+  { id:"avoid_late_period", kind:"avoid_time",   enforcement:"soft", gate:"compactDay",
+    cost:(s,d,p,pa,cx)=> p===4 ? 60 : (p===3 ? 1 : 0) },
+  { id:"instr_pref_day",    kind:"preference",    enforcement:"soft", gate:"teacherPrefDay",
+    cost:(s,d,p,pa,cx)=> cx.prefMap[s.ins]===d ? -3 : 0 },
+  { id:"instr_time_req",    kind:"availability",  enforcement:"soft", gate:"teacherAvoid",
+    cost:(s,d,p,pa,cx)=> ((cx.avoidMap[s.ins] && cx.avoidMap[s.ins].has(`${d}|${p}`)) || (cx.avoidPer[s.ins] && cx.avoidPer[s.ins].has(p))) ? 40 : 0 },
+  { id:"contiguity_soft",   kind:"contiguity",    enforcement:"soft", gate:"minGaps",
+    cost:(s,d,p,pa,cx)=>{ let c=0; for (const co of s.cohorts) for (const h of PHASES_OF[s.phase]) {
+      const per=new Set(); for (const x of cx.placed) if (x.day===d && x.cohorts.includes(co) && PHASES_OF[x.phase].includes(h)) per.add(x.period);
+      if (per.size) { const arr=[...per], mn=Math.min(...arr), mx=Math.max(...arr);
+        const gapBefore=(mx-mn+1)-per.size; const ns=per.has(p)?per.size:per.size+1;
+        const gapAfter=(Math.max(mx,p)-Math.min(mn,p)+1)-ns; c += (gapAfter-gapBefore)*80; }
+      else c += (p-1)*3; } return c; } },
+  { id:"balance_student",   kind:"balance",       enforcement:"soft", gate:"balanceStudent",
+    cost:(s,d,p,pa,cx)=>{ let c=0; for (const co of s.cohorts) for (const h of PHASES_OF[s.phase]) {
+      let n=0; for (const x of cx.placed) if (x.day===d && x.cohorts.includes(co) && PHASES_OF[x.phase].includes(h)) n++;
+      const tgt=(cx.dayTarget[co] && cx.dayTarget[co][h]) || 3; c += n*2 + (n>=tgt ? 24 : 0); } return c; } },
+  { id:"limit_per_day_soft",kind:"limit_per_day", enforcement:"soft", gate:"noSameCourseDay",
+    cost:(s,d,p,pa,cx)=>{ for (const x of cx.placed) if (x.courseIdx===s.courseIdx && x.type===s.type && x.day===d && x.period!==p && x.cohorts.some((co)=>s.cohorts.includes(co))) return 200; return 0; } },
+  { id:"biweekly_pair",     kind:"link",          enforcement:"soft", gate:"pairBiweekly",
+    cost:(s,d,p,pa,cx)=>{ if (pa==="weekly") return 0; const opp=pa==="odd"?"even":"odd"; for (const x of cx.placed) if (x.day===d && x.period===p && x.parity===opp && x.cohorts.some((co)=>s.cohorts.includes(co))) return -6; return 0; } },
+  { id:"biweekly_edge",     kind:"contiguity",    enforcement:"soft", gate:"biweeklyEdge",
+    cost:(s,d,p,pa,cx)=>{ if (pa==="weekly") return 0; let mn=99,mx=0,any=false; for (const x of cx.placed) if (x.day===d && x.cohorts.some((co)=>s.cohorts.includes(co))) { any=true; if (x.period<mn) mn=x.period; if (x.period>mx) mx=x.period; }
+      let c=(p-1)*22; if (any && p>mn && p<mx) c+=45; return c; } },
+  { id:"balance_teacher",   kind:"balance",       enforcement:"soft", gate:"balanceTeacher",
+    cost:(s,d,p,pa,cx)=>{ let n=0; for (const x of cx.placed) if (x.day===d && x.ins===s.ins) n++; return n>=3 ? 6 : 0; } },
+];
+
 function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
   const offMap = {}, prefMap = {}, avoidMap = {}, avoidPer = {};
   teachers.forEach((t)=>{ offMap[t.id]=t.off; prefMap[t.id]=t.pref;
@@ -665,33 +740,9 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
     return true; };
   const placeCost = (s,d,p,pa) => {
     let c = 0;
-    if (rules.compactDay) { if (p === 4) c += 60; else if (p === 3) c += 1; } // avoid the late 13:50 period (soft)
-    if (rules.teacherPrefDay && prefMap[s.ins] === d) c -= 3;
-    if (rules.teacherAvoid && ((avoidMap[s.ins] && avoidMap[s.ins].has(`${d}|${p}`)) || (avoidPer[s.ins] && avoidPer[s.ins].has(p)))) c += 40;
-    if (rules.minGaps) for (const co of s.cohorts) for (const h of PHASES_OF[s.phase]) {
-      const per=new Set(); for (const x of placed) if (x.day===d && x.cohorts.includes(co) && PHASES_OF[x.phase].includes(h)) per.add(x.period);
-      if (per.size) { const arr=[...per], mn=Math.min(...arr), mx=Math.max(...arr);
-        const gapBefore=(mx-mn+1)-per.size; const ns=per.has(p)?per.size:per.size+1;
-        const gapAfter=(Math.max(mx,p)-Math.min(mn,p)+1)-ns;
-        c += (gapAfter-gapBefore)*80; }        // strongly penalize opening a mid-day gap (per half)
-      else c += (p-1)*3;                        // first class of the day: prefer starting at P1
-    }
-    if (rules.balanceStudent) for (const co of s.cohorts) for (const h of PHASES_OF[s.phase]) {
-      let n=0; for (const x of placed) if (x.day===d && x.cohorts.includes(co) && PHASES_OF[x.phase].includes(h)) n++;
-      const tgt = (dayTarget[co] && dayTarget[co][h]) || 3;
-      c += n*2 + (n>=tgt ? 24 : 0); // fill days up to the target evenly before overloading any one day
-    }
-    if (rules.noSameCourseDay) { for (const x of placed) if (x.courseIdx===s.courseIdx && x.type===s.type && x.day===d && x.period!==p && x.cohorts.some((co)=>s.cohorts.includes(co))) { c += 200; break; } } // strongly avoid the same course+type at another period the same day
-    if (pa !== "weekly") {
-      if (rules.pairBiweekly) { const opp = pa==="odd"?"even":"odd"; for (const x of placed) if (x.day===d && x.period===p && x.parity===opp && x.cohorts.some((co)=>s.cohorts.includes(co))) { c -= 6; break; } }
-      if (rules.biweeklyEdge) { // biweekly must be first/last of the day, else the off-week has a mid-day gap
-        let mn=99,mx=0,any=false; for (const x of placed) if (x.day===d && x.cohorts.some((co)=>s.cohorts.includes(co))) { any=true; if (x.period<mn) mn=x.period; if (x.period>mx) mx=x.period; }
-        c += (p-1)*22;                             // pull toward P1 (an edge, and lecture-before-seminar friendly)
-        if (any && p>mn && p<mx) c += 45;          // heavy penalty for landing in the interior of the block
-      }
-    }
-    if (rules.balanceTeacher) { let n=0; for (const x of placed) if (x.day===d && x.ins===s.ins) n++; if (n>=3) c += 6; }
-    c += rand() * 3;
+    const cx = { prefMap, avoidMap, avoidPer, placed, dayTarget, rules };
+    for (const r of COST_RULES) { if (r.gate && !rules[r.gate]) continue; c += r.cost(s, d, p, pa, cx); }
+    c += rand() * 3;                            // exactly one RNG draw, last — preserves the deterministic sequence
     return c;
   };
   const contiguousOK = (s,d,p,except) => { // each half a student attends must be an unbroken block
@@ -709,14 +760,15 @@ function scheduleOnce(courses, teachers, locked, rand, rules = DEFAULT_RULES) {
   const domain = (s, relax) => {
     relax = relax || {};
     const opts = []; const pars = s.freq==="weekly" ? ["weekly"] : ["odd","even"];
+    const cx = { offMap, seqOK, contiguousOK, occ, placed, rules };
     for (const day of dayOrder) for (const per of PERIODS) for (const pa of pars) {
       if (!ALLOWP4 && per.id === 4) continue;
-      if (day.id === "tue" && per.id >= TUE_CUTOFF_PERIOD) continue; // Tuesday afternoon: hard block (no classes after 13:45)
-      if (offMap[s.ins] === day.id) continue;
-      if (!seqOK(s, day.id, per.id)) continue;
-      if (!relax.gaps && rules.minGaps && !contiguousOK(s, day.id, per.id)) continue; // per-half contiguity (no mid-day gaps)
-      if (!relax.sameType && rules.noSameCourseDay && placed.some((x)=>x.courseIdx===s.courseIdx && x.type===s.type && x.day===day.id && x.period!==per.id && x.cohorts.some((co)=>s.cohorts.includes(co)))) continue; // avoid same course+type twice in a day (lecture+seminar/lecture+lab still allowed)
-      if (!occ.canPlace(s, day.id, per.id, pa)) continue;
+      let blocked = false;
+      for (const r of PLACEMENT_RULES) {
+        if (r.relax && relax[r.relax]) continue;                 // this hybrid rule is relaxed for this pass
+        if (r.blocks(s, day.id, per.id, pa, cx)) { blocked = true; break; }
+      }
+      if (blocked) continue;
       let room, room2=null;
       if (s.parallel) { const rr = pickParallelRooms(s, day.id, per.id, pa, occ); if (!rr) continue; [room, room2] = rr; }
       else { room = pickRoom(s, day.id, per.id, pa, occ); if (!room) continue; }
@@ -921,40 +973,68 @@ function collisionCells(placed, half=null) {
 
 // ---------- Scoring ----------
 // half = "h1" | "h2" scores just that half; null/undefined scores the whole year (both halves)
+// ─── Declarative metric catalog (v0.1 rules-as-data refactor, increment 5) ───
+// Each metric is named and computed in exactly one place; SCORE_MODEL references these by name. The
+// math is generic (every institution counts gaps/imbalance the same way) — the institution-specific
+// part is the *weights* on these metrics, which already live in SCORE_MODEL as data.
+function cohortDayMap(placed, h) {
+  const cd = {}; COHORTS.forEach((c)=>{ cd[c.id]={}; DAYS.forEach((d)=>cd[c.id][d.id]=new Set()); });
+  placed.forEach((s)=>{ if (PHASES_OF[s.phase].includes(h)) s.cohorts.forEach((c)=>{ if (cd[c]) cd[c][s.day].add(s.period); }); });
+  return cd;
+}
+const METRIC_CATALOG = {
+  gaps:    { kind:"contiguity",    compute:(cx)=>{ let g=0; for (const h of cx.halves){ const cd=cx.cdByHalf[h]; for (const c of COHORTS) for (const d of DAYS){ const arr=[...cd[c.id][d.id]].sort((a,b)=>a-b); if (arr.length) g+=(arr[arr.length-1]-arr[0]+1)-arr.length; } } return g; } },
+  imb:     { kind:"balance",       compute:(cx)=>{ let v=0; for (const h of cx.halves){ const cd=cx.cdByHalf[h]; for (const c of COHORTS){ const pd=DAYS.map((d)=>cd[c.id][d.id].size); if (pd.some((x)=>x>0)) v+=Math.max(...pd)-Math.min(...pd); } } return v; } },
+  intBW:   { kind:"biweekly_edge", compute:(cx)=>{ let n=0; for (const h of cx.halves){ const cd=cx.cdByHalf[h]; cx.placed.forEach((s)=>{ if (s.parity!=="weekly" && PHASES_OF[s.phase].includes(h)) s.cohorts.forEach((co)=>{ if (!cd[co]) return; const arr=[...cd[co][s.day]]; if (arr.length){ const mn=Math.min(...arr), mx=Math.max(...arr); if (s.period>mn && s.period<mx) n++; } }); }); } return n; } },
+  p4:      { kind:"avoid_time",    compute:(cx)=>{ let n=0; cx.placed.forEach((s)=>{ if (s.period===4) n++; }); return n; } },
+  tueLate: { kind:"forbid_time",   compute:(cx)=>{ let n=0; cx.placed.forEach((s)=>{ if (s.day==="tue" && s.period>=4) n++; }); return n; } },
+  dupes:   { kind:"limit_per_day", compute:(cx)=>{ let n=0; const seen={}; cx.placed.forEach((s)=>s.cohorts.forEach((c)=>{ const k=c+"|"+s.day+"|"+s.courseIdx+"|"+s.type; (seen[k]=seen[k]||new Set()).add(s.period); })); for (const k in seen) if (seen[k].size>1) n+=seen[k].size-1; return n; } },
+};
+
+// ─── Declarative scoring model (v0.1 rules-as-data refactor, increment 4) ───
+// The tunable objective as data: each sub-score = 100 − Σ(metric × weight); `blend` = how sub-scores
+// combine into `overall`. These weights are exactly what a rule-builder would surface as sliders; the
+// metric *counts* stay institution-agnostic, the *weights* are the institution's preferences.
+const SCORE_MODEL = {
+  penalties: {
+    student: [ ["gaps",6], ["p4",2], ["tueLate",15], ["dupes",3] ],
+    balance: [ ["imb",2] ],
+  },
+  blend: { hard:0.40, student:0.30, balance:0.15, instructor:0.10, room:0.05 },
+  subscores: {
+    instructor: { overThreshold:4, overPenalty:8, prefMissPenalty:10 },
+    room:       { base:85, combinedBonus:1, cap:100 },
+    hard:       { unplacedPenalty:12, collisionPenalty:10 },
+  },
+};
+
 function scoreSchedule(placed, unplaced, teachers, half=null) {
   const halves = half ? [half] : ["h1","h2"];
   const inHalf = (s) => half ? PHASES_OF[s.phase].includes(half) : true;
   placed = placed.filter(inHalf); unplaced = unplaced.filter(inHalf);
-  let gaps=0, imb=0, p4=0, tueLate=0, intBW=0;
-  for (const h of halves) {
-    const cd = {}; COHORTS.forEach((c)=>{ cd[c.id]={}; DAYS.forEach((d)=>cd[c.id][d.id]=new Set()); });
-    placed.forEach((s)=>{ if (PHASES_OF[s.phase].includes(h)) s.cohorts.forEach((c)=>{ if (cd[c]) cd[c][s.day].add(s.period); }); });
-    for (const c of COHORTS) { const pd=[];
-      for (const d of DAYS) { const arr=[...cd[c.id][d.id]].sort((a,b)=>a-b); pd.push(arr.length);
-        if (arr.length) gaps += (arr[arr.length-1]-arr[0]+1)-arr.length; }
-      if (pd.some((x)=>x>0)) imb += Math.max(...pd)-Math.min(...pd); // spread across ALL 5 days: cramming into fewer days is imbalance, not balance
-    }
-    placed.forEach((s)=>{ if (s.parity!=="weekly" && PHASES_OF[s.phase].includes(h)) s.cohorts.forEach((co)=>{ if (!cd[co]) return; const arr=[...cd[co][s.day]]; if (arr.length){ const mn=Math.min(...arr), mx=Math.max(...arr); if (s.period>mn && s.period<mx) intBW++; } }); });
-  }
-  placed.forEach((s)=>{ if (s.period===4) p4++; if (s.day==="tue" && s.period>=4) tueLate++; });
-  let dupes=0; { const seen={}; placed.forEach((s)=>s.cohorts.forEach((c)=>{ const k=c+"|"+s.day+"|"+s.courseIdx+"|"+s.type; (seen[k]=seen[k]||new Set()).add(s.period); }));
-    for (const k in seen) if (seen[k].size>1) dupes += seen[k].size-1; } // same course + same type, same day (e.g. two seminars)
-  let stud = 100 - gaps*6 - p4*2 - tueLate*15 - dupes*3;
-  let balance = 100 - imb*2; // k=2: with the corrected all-days spread (~15-26), realistic schedules land ~50-70 instead of clamping to 0
+  // metrics from the declared METRIC_CATALOG; structural ones share one per-half occupancy map (no extra passes)
+  const cdByHalf = {}; for (const h of halves) cdByHalf[h] = cohortDayMap(placed, h);
+  const _mctx = { placed, halves, cdByHalf };
+  const _mv = {}; for (const id in METRIC_CATALOG) _mv[id] = METRIC_CATALOG[id].compute(_mctx);
+  const { gaps, imb, p4, tueLate, intBW, dupes } = _mv;
+  const _m = { gaps, p4, tueLate, dupes, imb };
+  let stud = 100; for (const [mk,w] of SCORE_MODEL.penalties.student) stud -= _m[mk]*w;
+  let balance = 100; for (const [mk,w] of SCORE_MODEL.penalties.balance) balance -= _m[mk]*w; // corrected all-days spread; weight is data now
   let instr=100, over=0, hits=0, tot=0;
   for (const ins of teachers) {
     const byDay={}; placed.filter((s)=>s.ins===ins.id || s.ins2===ins.id).forEach((s)=>byDay[s.day]=(byDay[s.day]||0)+1);
-    Object.values(byDay).forEach((n)=>{if(n>=4)over++;});
+    Object.values(byDay).forEach((n)=>{if(n>=SCORE_MODEL.subscores.instructor.overThreshold)over++;});
     if (ins.pref) { tot++; if (byDay[ins.pref]) hits++; }
   }
-  instr -= over*8; if (tot) instr -= Math.round((1-hits/tot)*10);
+  const _si = SCORE_MODEL.subscores.instructor; instr -= over*_si.overPenalty; if (tot) instr -= Math.round((1-hits/tot)*_si.prefMissPenalty);
   const combined = placed.filter((s)=>s.type==="L"&&s.cohorts.length>1).length;
-  const room = Math.min(100, 85 + combined);
+  const _sr = SCORE_MODEL.subscores.room; const room = Math.min(_sr.cap, _sr.base + combined*_sr.combinedBonus);
   const collisions = collisionCells(placed, half).length;
-  const hard = (unplaced.length===0 && collisions===0) ? 100 : Math.max(0, 100 - unplaced.length*12 - collisions*10);
+  const _sh = SCORE_MODEL.subscores.hard; const hard = (unplaced.length===0 && collisions===0) ? 100 : Math.max(0, 100 - unplaced.length*_sh.unplacedPenalty - collisions*_sh.collisionPenalty);
   const cl = (x)=>Math.max(0,Math.min(100,Math.round(x)));
   const parts = { hard:cl(hard), student:cl(stud), instructor:cl(instr), balance:cl(balance), room:cl(room) };
-  const overall = cl(parts.hard*0.4+parts.student*0.30+parts.balance*0.15+parts.instructor*0.10+parts.room*0.05);
+  const B = SCORE_MODEL.blend;
+  const overall = cl(parts.hard*B.hard + parts.student*B.student + parts.balance*B.balance + parts.instructor*B.instructor + parts.room*B.room);
   return { parts, overall, metrics:{ gaps, p4, tueLate, imb, intBW, dupes, collisions } };
 }
 
