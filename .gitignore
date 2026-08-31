@@ -3,6 +3,7 @@ tools/node_modules/
 tools/.probe-tmp/
 tools/package-lock.json
 
-# real course data stays local (never committed)
+# real course data stays local (never committed) — scoped to real data only,
+# so sample/fixture spreadsheets (e.g. tools/fixtures/*.xlsx) stay committable.
 Mandakh_Course_Data*.xlsx
-*.xlsx
+*_real*.xlsx
