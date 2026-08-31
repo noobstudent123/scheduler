@@ -3,7 +3,14 @@ tools/node_modules/
 tools/.probe-tmp/
 tools/package-lock.json
 
-# real course data stays local (never committed) — scoped to real data only,
-# so sample/fixture spreadsheets (e.g. tools/fixtures/*.xlsx) stay committable.
+# real course data stays local (never committed).
+# PRIMARY GUARD: everything under data/ is ignored regardless of filename, so no
+# name can accidentally leak real data. Use `data/*` (not `data/`) so the folder's
+# committed README survives — git cannot re-include a file whose parent dir is excluded.
+data/*
+!data/README.md
+# Commit sample/fixture spreadsheets under tools/fixtures/ instead (not ignored).
+
+# BACKSTOP: real-data name conventions, in case a file lands outside data/.
 Mandakh_Course_Data*.xlsx
 *_real*.xlsx
