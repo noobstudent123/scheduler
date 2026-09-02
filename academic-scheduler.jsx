@@ -81,6 +81,8 @@ const STR = {
   byCohortC:{en:"Year",mn:"Курс"},
   byTypeC:{en:"Type",mn:"Төрөл"},
   colorByHint:{en:"Colour cards by cohort or by class type (lecture / seminar / lab / bonus)",mn:"Картыг бүлгээр эсвэл хичээлийн төрлөөр (лекц / семинар / лаб / нэмэлт) өнгөөр ялгах"},
+  isTeaching:{en:"is already teaching here:",mn:"энэ цагт аль хэдийн заана:"},
+  alreadyHas:{en:"already has a class here:",mn:"энэ цагт аль хэдийн хичээлтэй:"},
   alreadyBooked:{en:"already has a class at that time",mn:"тэр цагт аль хэдийн хичээлтэй"},
   noRoomFree:{en:"no free room fits here",mn:"тохирох чөлөөт өрөө алга"},
   tueBlocked:{en:"No classes after 13:45 on Tuesday",mn:"Мягмар гарагт 13:45-аас хойш хичээл байхгүй"},
@@ -985,7 +987,7 @@ function teacherRating(id, placed) {
 }
 
 // ---------- Move validation ----------
-function validateMove(session, d, p, placed, lang, teachers, half) {
+function validateMove(session, d, p, placed, lang, teachers, half, courses) {
   const offMap = {}; teachers.forEach((t)=>offMap[t.id]=t.off);
   const others = placed.filter((s)=>s.id!==session.id);
   const { get } = occFactory(others);
@@ -999,8 +1001,12 @@ function validateMove(session, d, p, placed, lang, teachers, half) {
   for (const ph of phases) for (const pa of pars) { const cell = get(d,p,ph,pa);
     if (cell.ins.has(session.ins) || (session.ins2 && session.ins2!==session.ins && cell.ins.has(session.ins2))) insHit=true;
     if (session.cohorts.some((c)=>cell.cohorts.has(c))) cohHit=true; }
-  if (insHit) reasons.push({level:"conflict", text:`${teacherName(teachers,session.ins)} — ${tr(lang,"alreadyBooked")}`});
-  if (cohHit) reasons.push({level:"conflict", text:`${session.cohorts.join("+")} — ${tr(lang,"alreadyBooked")}`});
+  const sIns = [session.ins, session.ins2].filter(Boolean);
+  const overlapAt = (x)=> x.day===d && x.period===p && phases.some((h)=>PHASES_OF[x.phase].includes(h)) && pars.some((pa)=>(x.parity==="weekly"?["odd","even"]:[x.parity]).includes(pa));
+  if (insHit) { const blk = others.find((x)=>overlapAt(x) && [x.ins,x.ins2].filter(Boolean).some((i)=>sIns.includes(i)));
+    reasons.push({level:"conflict", text: (blk && courses) ? `${teacherName(teachers,session.ins)} ${tr(lang,"isTeaching")} ${courseName(courses,blk.courseIdx)}` : `${teacherName(teachers,session.ins)} — ${tr(lang,"alreadyBooked")}`}); }
+  if (cohHit) { const blk = others.find((x)=>overlapAt(x) && x.cohorts.some((c)=>session.cohorts.includes(c)));
+    reasons.push({level:"conflict", text: (blk && courses) ? `${session.cohorts.join("+")} ${tr(lang,"alreadyHas")} ${courseName(courses,blk.courseIdx)}` : `${session.cohorts.join("+")} — ${tr(lang,"alreadyBooked")}`}); }
   let room, room2=null;
   if (session.parallel) {
     const perSec = Math.ceil(session.students/2);
@@ -1758,8 +1764,8 @@ export default function App() {
     const s = placed.find((x)=>x.id===id); if (!s) return;
     if (lockedIn(s, semView)) { showToast("conflict", t("lockedMove")); return; }
     if (targetCohort && !s.cohorts.includes(targetCohort)) { showToast("conflict", t("wrongColumn")); return; } // no horizontal moves into another group's column
-    const v = validateMove(s, d, p, placed, lang, teachers, semView);
-    if (v.status==="conflict") { showToast("conflict", v.reasons.find((r)=>r.level==="conflict").text); return; }
+    const v = validateMove(s, d, p, placed, lang, teachers, semView, courses);
+    if (v.status==="conflict") { showToast("conflict", v.reasons.filter((r)=>r.level==="conflict").map((r)=>r.text).join("  ·  ")); return; }
     setPlaced((prev)=>prev.map((x)=> x.id===id ? { ...x, day:d, period:p, room:v.room, room2:v.room2 } : x));
     showToast(v.status, v.status==="warning" ? v.reasons.find((r)=>r.level==="warning").text : t("moved"));
   };
