@@ -1,12 +1,15 @@
 name: Supabase keep-alive
 on:
   schedule:
-    - cron: '0 6 * * 1,4'   # 06:00 UTC every Monday & Thursday (twice weekly, margin under the 7-day pause)
+    - cron: '0 6 */3 * *'   # every 3 days at 06:00 UTC (safe margin under Supabase's 7-day pause)
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Ping the database
         run: |
           code=$(curl -sS -o /dev/null -w "%{http_code}" \
@@ -18,3 +21,12 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      - name: Record heartbeat
+        run: |
+          mkdir -p .keepalive
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive/last-ping.txt
+          git config user.name  "keep-alive bot"
+          git config user.email "actions@github.com"
+          git add .keepalive/last-ping.txt
+          git commit -m "chore: keep-alive heartbeat [skip ci]" || echo "no change to commit"
+          git push
